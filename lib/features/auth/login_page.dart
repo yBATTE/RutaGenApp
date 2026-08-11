@@ -1,0 +1,316 @@
+import 'package:flutter/material.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
+import '../../shared/widgets/ruta_gen_logo.dart';
+import 'register_page.dart';
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({
+    super.key,
+    required this.onAuthenticated,
+  });
+
+  final VoidCallback onAuthenticated;
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _userController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _obscurePassword = true;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _userController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      await AuthService.instance.login(
+        identifier: _userController.text,
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      widget.onAuthenticated();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
+      _showMessage(error.message);
+    } catch (_) {
+      if (!mounted) return;
+
+      _showMessage(
+        'Ocurrió un error inesperado. Intentá nuevamente.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  void _showBiometricMessage() {
+    _showMessage(
+      'Primero debés iniciar sesión con tu DNI o correo. '
+      'La biometría se habilitará después desde Seguridad.',
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.navyDeep,
+              AppColors.navy,
+              Color(0xFF00356C),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              26,
+              40,
+              26,
+              24,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight:
+                    MediaQuery.sizeOf(context).height - 88,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    const RutaGenLogo(),
+                    const SizedBox(height: 50),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'Bienvenido a ',
+                          children: [
+                            TextSpan(
+                              text: 'Ruta Gen',
+                              style: TextStyle(
+                                color: AppColors.cyan,
+                              ),
+                            ),
+                          ],
+                        ),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    TextFormField(
+                      controller: _userController,
+                      enabled: !_loading,
+                      keyboardType:
+                          TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [
+                        AutofillHints.username,
+                        AutofillHints.email,
+                      ],
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(
+                          Icons.person_outline_rounded,
+                        ),
+                        hintText: 'DNI o correo',
+                      ),
+                      validator: (value) {
+                        if (value == null ||
+                            value.trim().isEmpty) {
+                          return 'Ingresá tu DNI o correo.';
+                        }
+
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _passwordController,
+                      enabled: !_loading,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const [
+                        AutofillHints.password,
+                      ],
+                      onFieldSubmitted: (_) {
+                        if (!_loading) {
+                          _login();
+                        }
+                      },
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                        ),
+                        hintText: 'Contraseña',
+                        suffixIcon: IconButton(
+                          onPressed: _loading
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _obscurePassword =
+                                        !_obscurePassword;
+                                  });
+                                },
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Ingresá tu contraseña.';
+                        }
+
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton(
+                      onPressed: _loading ? null : _login,
+                      child: _loading
+                          ? const SizedBox.square(
+                              dimension: 22,
+                              child:
+                                  CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Ingresar'),
+                    ),
+                    TextButton(
+                      onPressed: _loading
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      RegisterPage(
+                                    onRegistered:
+                                        widget
+                                            .onAuthenticated,
+                                  ),
+                                ),
+                              );
+                            },
+                      child: const Text(
+                        'Crear cuenta',
+                        style: TextStyle(
+                          color: AppColors.cyan,
+                          decoration:
+                              TextDecoration.underline,
+                          decorationColor:
+                              AppColors.cyan,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Divider(
+                            color: Colors.white.withValues(
+                              alpha: 0.35,
+                            ),
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                          ),
+                          child: Text(
+                            'o',
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Divider(
+                            color: Colors.white.withValues(
+                              alpha: 0.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    OutlinedButton.icon(
+                      onPressed: _loading
+                          ? null
+                          : _showBiometricMessage,
+                      icon: const Icon(
+                        Icons.fingerprint_rounded,
+                      ),
+                      label: const Text(
+                        'Ingresar con biometría',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize:
+                            const Size.fromHeight(54),
+                        foregroundColor: AppColors.cyan,
+                        side: const BorderSide(
+                          color: AppColors.blue,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
