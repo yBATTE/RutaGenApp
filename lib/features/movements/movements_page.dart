@@ -258,7 +258,7 @@ class _MovementsPageState
             ),
             const SizedBox(height: 16),
             const Text(
-              'Todavía no tenés cargas',
+              'Todavía no tenés movimientos',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.ink,
@@ -268,7 +268,7 @@ class _MovementsPageState
             ),
             const SizedBox(height: 6),
             const Text(
-              'Cuando acredites puntos, tus cargas aparecerán acá.',
+              'Tus cargas y canjes aparecerán acá.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.muted,
@@ -315,7 +315,7 @@ class _MovementsPageState
                   label: Text(
                     _loadingMore
                         ? 'Cargando...'
-                        : 'Cargar más',
+                        : 'Cargar mÃ¡s',
                   ),
                 ),
               ),
@@ -358,10 +358,12 @@ class _MovementsPageState
                         CrossAxisAlignment.start,
                     children: [
                       CircleAvatar(
-                        backgroundColor:
-                            const Color(0xFFEAF4FF),
-                        foregroundColor:
-                            AppColors.blue,
+                        backgroundColor: positive
+                            ? const Color(0xFFEAF4FF)
+                            : const Color(0xFFFFEEE8),
+                        foregroundColor: positive
+                            ? AppColors.blue
+                            : AppColors.danger,
                         child: Icon(
                           movement.type ==
                                   MovementType.load

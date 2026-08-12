@@ -4,13 +4,11 @@ import 'models.dart';
 import 'ruta_gen_repository.dart';
 
 class MockRutaGenRepository implements RutaGenRepository {
-  static const _delay =
-      Duration(milliseconds: 350);
+  static const _delay = Duration(milliseconds: 350);
 
   @override
   Future<Customer> getCustomer() async {
     await Future<void>.delayed(_delay);
-
     return const Customer(
       firstName: 'Lucas',
       lastName: 'Battelini',
@@ -22,7 +20,6 @@ class MockRutaGenRepository implements RutaGenRepository {
   @override
   Future<List<Reward>> getRewards() async {
     await Future<void>.delayed(_delay);
-
     return const [
       Reward(
         id: 'termo',
@@ -49,18 +46,13 @@ class MockRutaGenRepository implements RutaGenRepository {
     int limit = 20,
   }) async {
     await Future<void>.delayed(_delay);
-
     final now = DateTime.now();
-
     final movements = [
       Movement(
         id: 'mock-load-1',
         title: 'Carga de combustible',
-        subtitle:
-            'Canning 1 · Infinia · 32,4 litros · \$48.600,00',
-        date: now.subtract(
-          const Duration(hours: 2),
-        ),
+        subtitle: 'Canning 1\nInfinia • 32,4 L',
+        date: now.subtract(const Duration(hours: 2)),
         points: 32,
         type: MovementType.load,
         stationName: 'Canning 1',
@@ -72,38 +64,43 @@ class MockRutaGenRepository implements RutaGenRepository {
     ];
 
     final start = (page - 1) * limit;
-
-    if (start >= movements.length) {
-      return const [];
-    }
-
+    if (start >= movements.length) return const [];
     final end = (start + limit) > movements.length
         ? movements.length
         : start + limit;
-
     return movements.sublist(start, end);
+  }
+
+  @override
+  Future<List<NewsItem>> getNews({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    await Future<void>.delayed(_delay);
+    return const [];
+  }
+
+  @override
+  Future<NewsItem> getNewsDetail(String newsId) async {
+    await Future<void>.delayed(_delay);
+    throw StateError('Novedad mock no encontrada.');
   }
 
   @override
   Future<List<Station>> getStations() async {
     await Future<void>.delayed(_delay);
-
     return const [];
   }
 
   @override
   Future<String> getQrToken() async {
     await Future<void>.delayed(_delay);
-
     return 'TOKEN-DE-PRUEBA';
   }
 
   @override
-  Future<String> redeemReward(
-    String rewardId,
-  ) async {
+  Future<String> redeemReward(String rewardId) async {
     await Future<void>.delayed(_delay);
-
     return 'CANJE DE PRUEBA';
   }
 }

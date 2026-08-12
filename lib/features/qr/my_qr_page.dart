@@ -30,6 +30,7 @@ class _MyQrPageState extends State<MyQrPage> {
   TemporaryQr? _qr;
   DateTime? _localExpiresAt;
   String? _errorMessage;
+  String? _unavailableQrCode;
   bool _loading = false;
   bool _requestInProgress = false;
   bool _loggingOut = false;
@@ -76,7 +77,7 @@ class _MyQrPageState extends State<MyQrPage> {
   void didUpdateWidget(covariant MyQrPage oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Cada vez que el usuario vuelve a abrir la pestaña consultamos MongoDB.
+    // Cada vez que el usuario vuelve a abrir la pestaÃ±a consultamos MongoDB.
     // El backend devuelve el mismo QR vigente o reemplaza el vencido.
     if (widget.isActive && !oldWidget.isActive) {
       _loadCurrentQr(showLoading: _qr == null);
@@ -90,9 +91,9 @@ class _MyQrPageState extends State<MyQrPage> {
       setState(() {});
     });
 
-    // GET /qr/current es idempotente: devuelve el mismo QR si sigue activo y
-    // uno nuevo si el anterior fue consumido por una carga o un canje.
-    _statusTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+    // Consulta el estado sin generar un QR nuevo automáticamente. Si el
+    // backend informa que fue consumido, desaparece de la pantalla.
+    _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted ||
           !widget.isActive ||
           _qr == null ||
@@ -122,7 +123,7 @@ class _MyQrPageState extends State<MyQrPage> {
     final repository = _qrRepository;
     if (repository == null) {
       setState(() {
-        _errorMessage = 'La versión actual del repositorio no admite QR temporal.';
+        _errorMessage = 'La versiÃ³n actual del repositorio no admite QR temporal.';
       });
       return;
     }
@@ -143,8 +144,8 @@ class _MyQrPageState extends State<MyQrPage> {
 
       if (!mounted) return;
 
-      // Si el QR visible venció mientras se consultaba su estado, no mostramos
-      // otro automáticamente. El usuario deberá generarlo con el botón.
+      // Si el QR visible venciÃ³ mientras se consultaba su estado, no mostramos
+      // otro automÃ¡ticamente. El usuario deberÃ¡ generarlo con el botÃ³n.
       if (wasCheckingActiveQr && _remainingSeconds == 0) {
         setState(() {
           _loading = false;
@@ -158,6 +159,7 @@ class _MyQrPageState extends State<MyQrPage> {
 
       setState(() {
         _qr = result;
+        _unavailableQrCode = null;
         _localExpiresAt = DateTime.now().add(
           Duration(seconds: safeSeconds < 0 ? 0 : safeSeconds),
         );
@@ -168,7 +170,7 @@ class _MyQrPageState extends State<MyQrPage> {
       if (renew) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Generamos un QR nuevo. El anterior ya no es válido.'),
+            content: Text('Generamos un QR nuevo. El anterior ya no es vÃ¡lido.'),
           ),
         );
       }
@@ -180,6 +182,23 @@ class _MyQrPageState extends State<MyQrPage> {
         return;
       }
 
+      if (error.statusCode == 410) {
+        final details = error.details;
+        final code = details is Map
+            ? details['code']?.toString()
+            : null;
+
+        setState(() {
+          _qr = null;
+          _localExpiresAt = null;
+          _unavailableQrCode =
+              code == 'QR_EXPIRED' ? 'QR_EXPIRED' : 'QR_CONSUMED';
+          _errorMessage = null;
+          _loading = false;
+        });
+        return;
+      }
+
       setState(() {
         _errorMessage = error.message;
         _loading = false;
@@ -188,7 +207,7 @@ class _MyQrPageState extends State<MyQrPage> {
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = 'No se pudo obtener el código QR. Intentá nuevamente.';
+        _errorMessage = 'No se pudo obtener el cÃ³digo QR. IntentÃ¡ nuevamente.';
         _loading = false;
       });
     } finally {
@@ -242,20 +261,24 @@ class _MyQrPageState extends State<MyQrPage> {
                       child: _buildQrContent(qr, expired),
                     ),
                     const SizedBox(height: 22),
-                    const Text(
-                      'Mostralo al playero',
+                    Text(
+                      _unavailableQrCode == null
+                          ? 'Mostralo al playero'
+                          : 'Generá un nuevo QR',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: AppColors.ink,
                       ),
                     ),
                     const SizedBox(height: 7),
-                    const Text(
-                      'Sirve para sumar puntos o confirmar el canje de un premio.',
+                    Text(
+                      _unavailableQrCode == null
+                          ? 'Sirve para sumar puntos o confirmar el canje de un premio.'
+                          : 'Cada código puede utilizarse una sola vez.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.muted),
+                      style: const TextStyle(color: AppColors.muted),
                     ),
                     if (qr != null && !expired) ...[
                       const SizedBox(height: 18),
@@ -345,6 +368,88 @@ class _MyQrPageState extends State<MyQrPage> {
       );
     }
 
+    if (qr == null && _unavailableQrCode != null) {
+      final consumed = _unavailableQrCode == 'QR_CONSUMED';
+
+      return SizedBox(
+        key: ValueKey(_unavailableQrCode),
+        height: 285,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: (consumed ? AppColors.blue : AppColors.danger)
+                    .withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                consumed
+                    ? Icons.check_circle_rounded
+                    : Icons.timer_off_rounded,
+                size: 48,
+                color: consumed ? AppColors.blue : AppColors.danger,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              consumed ? 'QR utilizado' : 'QR vencido',
+              style: TextStyle(
+                color: consumed ? AppColors.blue : AppColors.danger,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              consumed
+                  ? 'La operación fue registrada y este código ya no puede volver a usarse.'
+                  : 'Este código ya no es válido.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: FilledButton.icon(
+                onPressed: _loading ? null : _renewQr,
+                icon: _loading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.3,
+                        ),
+                      )
+                    : const Icon(Icons.qr_code_2_rounded),
+                label: Text(
+                  _loading ? 'Generando...' : 'Generar nuevo QR',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     if (qr == null) {
       return SizedBox(
         key: const ValueKey('empty'),
@@ -390,7 +495,7 @@ class _MyQrPageState extends State<MyQrPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Este código ya no es válido.',
+              'Este cÃ³digo ya no es vÃ¡lido.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted),
             ),

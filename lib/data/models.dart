@@ -20,6 +20,7 @@ class Customer {
 
   String get initials {
     final first = firstName.trim().isNotEmpty ? firstName.trim()[0] : '';
+
     final last = lastName.trim().isNotEmpty ? lastName.trim()[0] : '';
 
     return '$first$last'.toUpperCase();
@@ -87,6 +88,55 @@ class Movement {
   final double? liters;
   final double? amount;
   final double? pricePerLiter;
+}
+
+class NewsItem {
+  const NewsItem({
+    required this.id,
+    required this.imageUrl,
+    required this.thumbnailUrl,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.title,
+    this.description,
+    this.publishedAt,
+  });
+
+  final String id;
+  final String? title;
+  final String? description;
+
+  /*
+   * Imagen original.
+   * Se utiliza en la pantalla de detalle.
+   */
+  final String imageUrl;
+
+  /*
+   * Imagen reducida.
+   * Se utiliza en las tarjetas del Home.
+   */
+  final String thumbnailUrl;
+
+  final String status;
+  final DateTime? publishedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  String get displayTitle {
+    final value = title?.trim() ?? '';
+
+    return value.isEmpty ? 'Novedad Ruta Gen' : value;
+  }
+
+  bool get hasDescription {
+    return description?.trim().isNotEmpty ?? false;
+  }
+
+  DateTime get displayDate {
+    return publishedAt ?? createdAt;
+  }
 }
 
 class Station {

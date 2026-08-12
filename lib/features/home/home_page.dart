@@ -7,6 +7,7 @@ import '../../models/user_model.dart';
 import '../../shared/widgets/ruta_gen_logo.dart';
 import '../../shared/widgets/section_title.dart';
 import '../movements/movements_page.dart';
+import '../news/news_detail_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -28,25 +29,30 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Movement>> _movements;
+  late Future<List<NewsItem>> _news;
 
   @override
   void initState() {
     super.initState();
     _movements = widget.repository.getMovements();
+    _news = widget.repository.getNews(limit: 5);
   }
 
-Future<void> _refresh() async {
-  final movements = widget.repository.getMovements();
+  Future<void> _refresh() async {
+    final movements = widget.repository.getMovements();
+    final news = widget.repository.getNews(limit: 5);
 
-  setState(() {
-    _movements = movements;
-  });
+    setState(() {
+      _movements = movements;
+      _news = news;
+    });
 
-  await Future.wait<Object?>([
-    movements,
-    widget.onRefreshUser(),
-  ]);
-}
+    await Future.wait<Object?>([
+      movements,
+      news,
+      widget.onRefreshUser(),
+    ]);
+  }
 
   String _formatPoints(double value) {
     final text = value == value.roundToDouble()
@@ -71,6 +77,17 @@ Future<void> _refresh() async {
       MaterialPageRoute(
         builder: (_) => MovementsPage(
           repository: widget.repository,
+        ),
+      ),
+    );
+  }
+
+  void _openNewsDetail(NewsItem item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NewsDetailPage(
+          repository: widget.repository,
+          initialItem: item,
         ),
       ),
     );
@@ -184,7 +201,7 @@ Future<void> _refresh() async {
                   ),
                   const SizedBox(height: 26),
                   SectionTitle(
-                    'Última carga',
+                    'Últimos movimientos',
                     action: 'Ver todas',
                     onTap: _openMovements,
                   ),
@@ -192,8 +209,7 @@ Future<void> _refresh() async {
                   FutureBuilder<List<Movement>>(
                     future: _movements,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const SizedBox(
                           height: 130,
                           child: Center(
@@ -217,14 +233,80 @@ Future<void> _refresh() async {
                       if (movements.isEmpty) {
                         return const _MessageCard(
                           icon: Icons.receipt_long_outlined,
-                          title: 'Todavía no tenés cargas',
-                          message:
-                              'Cuando acredites puntos, tu última carga aparecerá acá.',
+                          title: 'Todavía no tenés movimientos',
+                          message: 'Tus cargas y canjes aparecerán acá.',
                         );
                       }
 
-                      return _LatestMovementCard(
-                        movement: movements.first,
+                      final recentMovements = movements.take(3).toList();
+
+                      return Column(
+                        children: List.generate(
+                          recentMovements.length,
+                          (index) => Padding(
+                            padding: EdgeInsets.only(
+                              bottom:
+                                  index == recentMovements.length - 1 ? 0 : 10,
+                            ),
+                            child: _LatestMovementCard(
+                              movement: recentMovements[index],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 26),
+                  SectionTitle('Novedades'),
+                  const SizedBox(height: 10),
+                  FutureBuilder<List<NewsItem>>(
+                    future: _news,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const SizedBox(
+                          height: 250,
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return _MessageCard(
+                          icon: Icons.cloud_off_rounded,
+                          title: 'No pudimos cargar las novedades',
+                          message: 'Deslizá hacia abajo para reintentar.',
+                          onTap: _refresh,
+                        );
+                      }
+
+                      final items = snapshot.data ?? [];
+                      if (items.isEmpty) {
+                        return const _MessageCard(
+                          icon: Icons.campaign_outlined,
+                          title: 'No hay novedades publicadas',
+                          message: 'Cuando tengamos algo nuevo, aparecerá acá.',
+                        );
+                      }
+
+                      return SizedBox(
+                        height: 285,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final width = MediaQuery.sizeOf(context).width;
+                            return SizedBox(
+                              width: width >= 700 ? 360 : width - 62,
+                              child: _NewsCard(
+                                item: items[index],
+                                onTap: () => _openNewsDetail(items[index]),
+                              ),
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
@@ -391,8 +473,42 @@ class _LatestMovementCard extends StatelessWidget {
 
   final Movement movement;
 
+  String _formatDecimal(double? value) {
+    if (value == null) return '';
+
+    final text = value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+
+    return text.replaceAll('.', ',');
+  }
+
+  String _details() {
+    final station = movement.stationName?.trim();
+    final item = movement.productName?.trim();
+
+    if (movement.type == MovementType.redemption) {
+      return [
+        if (station != null && station.isNotEmpty) station,
+        if (item != null && item.isNotEmpty) item,
+      ].join('\n');
+    }
+
+    final loadData = <String>[
+      if (item != null && item.isNotEmpty) item,
+      if (movement.liters != null) '${_formatDecimal(movement.liters)} L',
+    ].join(' • ');
+
+    return [
+      if (station != null && station.isNotEmpty) station,
+      if (loadData.isNotEmpty) loadData,
+    ].join('\n');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final positive = movement.points >= 0;
+
     return Card(
       child: InkWell(
         onTap: () {},
@@ -401,12 +517,16 @@ class _LatestMovementCard extends StatelessWidget {
           padding: const EdgeInsets.all(18),
           child: Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 26,
-                backgroundColor: Color(0xFFE8F3FF),
-                foregroundColor: AppColors.blue,
+                backgroundColor: positive
+                    ? const Color(0xFFE8F3FF)
+                    : const Color(0xFFFFEEE8),
+                foregroundColor: positive ? AppColors.blue : AppColors.danger,
                 child: Icon(
-                  Icons.local_gas_station_rounded,
+                  movement.type == MovementType.load
+                      ? Icons.local_gas_station_rounded
+                      : Icons.card_giftcard_rounded,
                 ),
               ),
               const SizedBox(width: 14),
@@ -424,7 +544,7 @@ class _LatestMovementCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      movement.subtitle,
+                      _details(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -437,15 +557,130 @@ class _LatestMovementCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                '+${movement.points}',
-                style: const TextStyle(
-                  color: AppColors.success,
+                '${positive ? '+' : '-'}${movement.points.abs()}',
+                style: TextStyle(
+                  color: positive ? AppColors.success : AppColors.danger,
                   fontSize: 21,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewsCard extends StatelessWidget {
+  const _NewsCard({
+    required this.item,
+    required this.onTap,
+  });
+
+  final NewsItem item;
+  final VoidCallback onTap;
+
+  String _date(DateTime value) {
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
+    ];
+    return '${value.day} ${months[value.month - 1]} ${value.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SizedBox(
+                width: double.infinity,
+                child: Image.network(
+                  item.thumbnailUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const ColoredBox(
+                    color: Color(0xFFE8F3FF),
+                    child: Center(
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: AppColors.blue,
+                        size: 42,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 13, 15, 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.displayTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  if (item.hasDescription) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      item.description!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        _date(item.displayDate),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Text(
+                        'Ver detalle',
+                        style: TextStyle(
+                          color: AppColors.blue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

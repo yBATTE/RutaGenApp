@@ -5,8 +5,7 @@ import '../services/api_client.dart';
 import 'models.dart';
 import 'ruta_gen_repository.dart';
 
-class ApiRutaGenRepository
-    implements RutaGenRepository, TemporaryQrRepository {
+class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
   ApiRutaGenRepository({
     ApiClient? apiClient,
   }) : _apiClient = apiClient ?? ApiClient.instance;
@@ -58,6 +57,11 @@ class ApiRutaGenRepository
     return DateTime.tryParse(value.toString())?.toLocal() ?? DateTime.now();
   }
 
+  DateTime? _nullableDateValue(dynamic value) {
+    if (value == null || value.toString().trim().isEmpty) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
+  }
+
   String _formatDecimal(double value, {int decimals = 2}) {
     if (value == value.roundToDouble()) return value.toInt().toString();
 
@@ -82,13 +86,72 @@ class ApiRutaGenRepository
     final imagePath = _stringValue(value);
     if (imagePath.isEmpty) return null;
 
-    if (imagePath.startsWith('http://') ||
-        imagePath.startsWith('https://')) {
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
 
     final separator = imagePath.startsWith('/') ? '' : '/';
     return '${ApiConfig.serverUrl}$separator$imagePath';
+  }
+
+  NewsItem _newsFromData(
+    Map<String, dynamic> data,
+  ) {
+    /*
+   * Imagen original para el detalle.
+   */
+    final imageUrl = _rewardImageUrl(
+      data['imagePath'] ?? data['imageUrl'],
+    );
+
+    if (imageUrl == null) {
+      throw const FormatException(
+        'La novedad no posee una imagen válida.',
+      );
+    }
+
+    /*
+   * Miniatura para el Home.
+   *
+   * Si es una novedad antigua que todavía no tiene
+   * thumbnailPath, utiliza la imagen original para
+   * mantener compatibilidad.
+   */
+    final thumbnailUrl = _rewardImageUrl(
+          data['thumbnailPath'] ?? data['imagePath'] ?? data['imageUrl'],
+        ) ??
+        imageUrl;
+
+    final title = _stringValue(
+      data['title'],
+    );
+
+    final description = _stringValue(
+      data['description'],
+    );
+
+    return NewsItem(
+      id: _stringValue(
+        data['id'] ?? data['_id'],
+      ),
+      title: title.isEmpty ? null : title,
+      description: description.isEmpty ? null : description,
+      imageUrl: imageUrl,
+      thumbnailUrl: thumbnailUrl,
+      status: _stringValue(
+        data['status'],
+        fallback: 'PUBLISHED',
+      ),
+      publishedAt: _nullableDateValue(
+        data['publishedAt'],
+      ),
+      createdAt: _dateValue(
+        data['createdAt'],
+      ),
+      updatedAt: _dateValue(
+        data['updatedAt'] ?? data['createdAt'],
+      ),
+    );
   }
 
   Movement _movementFromLoad(Map<String, dynamic> data) {
@@ -114,17 +177,16 @@ class ApiRutaGenRepository
           data['createdAt'],
     );
 
-    final subtitleParts = <String>[
-      stationName,
+    final loadDetails = <String>[
       productName,
-      '${_formatDecimal(liters)} litros',
+      '${_formatDecimal(liters)} L',
       if (amount > 0) _formatMoney(amount),
-    ];
+    ].join(' • ');
 
     return Movement(
       id: _stringValue(data['id'] ?? data['_id']),
       title: 'Carga de combustible',
-      subtitle: subtitleParts.join(' · '),
+      subtitle: '$stationName\n$loadDetails',
       date: date,
       points: points,
       type: MovementType.load,
@@ -133,6 +195,35 @@ class ApiRutaGenRepository
       liters: liters,
       amount: amount,
       pricePerLiter: pricePerLiter,
+    );
+  }
+
+  Movement _movementFromRedemption(Map<String, dynamic> data) {
+    final stationName = _stringValue(
+      data['stationName'],
+      fallback: _stringValue(
+        data['stationSlug'],
+        fallback: 'Estación Grupo Gen',
+      ),
+    );
+    final rewardName = _stringValue(
+      data['rewardName'],
+      fallback: 'Premio',
+    );
+    final pointsCost = _intValue(
+      data['pointsCost'] ?? data['points'],
+    ).abs();
+    final date = _dateValue(data['createdAt']);
+
+    return Movement(
+      id: _stringValue(data['id'] ?? data['_id']),
+      title: 'Canje de premio',
+      subtitle: '$stationName\n$rewardName',
+      date: date,
+      points: -pointsCost,
+      type: MovementType.redemption,
+      stationName: stationName,
+      productName: rewardName,
     );
   }
 
@@ -153,6 +244,28 @@ class ApiRutaGenRepository
 
   TemporaryQr _temporaryQrFromResponse(Map<String, dynamic> response) {
     final data = _asMap(response['data']);
+    final status = _stringValue(data['status']).toUpperCase();
+
+    if (status == 'CONSUMED') {
+      throw const ApiException(
+        message: 'El código QR ya fue utilizado. Generá uno nuevo.',
+        statusCode: 410,
+        details: <String, dynamic>{
+          'code': 'QR_CONSUMED',
+        },
+      );
+    }
+
+    if (status == 'EXPIRED') {
+      throw const ApiException(
+        message: 'El código QR venció. Generá uno nuevo.',
+        statusCode: 410,
+        details: <String, dynamic>{
+          'code': 'QR_EXPIRED',
+        },
+      );
+    }
+
     final qrToken = _stringValue(data['qrToken']);
     final expiresAtText = _stringValue(data['expiresAt']);
     final expiresAt = DateTime.tryParse(expiresAtText)?.toLocal();
@@ -194,19 +307,49 @@ class ApiRutaGenRepository
     int page = 1,
     int limit = 20,
   }) async {
-    final response = await _apiClient.get(
-      '/loads/me',
-      queryParameters: {
-        'page': page.toString(),
-        'limit': limit.toString(),
-        'status': 'CONFIRMED',
-      },
-    );
+    final safePage = page < 1 ? 1 : page;
+    final safeLimit = limit < 1 ? 1 : (limit > 100 ? 100 : limit);
+    final requestedCount = safePage * safeLimit;
+    final requestedItems = requestedCount > 100 ? 100 : requestedCount;
 
-    return _extractList(response)
-        .whereType<Map>()
-        .map((item) => _movementFromLoad(Map<String, dynamic>.from(item)))
-        .toList();
+    final responses = await Future.wait([
+      _apiClient.get(
+        '/loads/me',
+        queryParameters: {
+          'page': '1',
+          'limit': requestedItems.toString(),
+          'status': 'CONFIRMED',
+        },
+      ),
+      _apiClient.get(
+        '/rewards/me',
+        queryParameters: {
+          'page': '1',
+          'limit': requestedItems.toString(),
+        },
+      ),
+    ]);
+
+    final movements = <Movement>[
+      ..._extractList(responses[0]).whereType<Map>().map(
+            (item) => _movementFromLoad(
+              Map<String, dynamic>.from(item),
+            ),
+          ),
+      ..._extractList(responses[1]).whereType<Map>().map(
+            (item) => _movementFromRedemption(
+              Map<String, dynamic>.from(item),
+            ),
+          ),
+    ]..sort((a, b) => b.date.compareTo(a.date));
+
+    final start = (safePage - 1) * safeLimit;
+    if (start >= movements.length) return const [];
+
+    final requestedEnd = start + safeLimit;
+    final end =
+        requestedEnd > movements.length ? movements.length : requestedEnd;
+    return movements.sublist(start, end);
   }
 
   @override
@@ -221,6 +364,39 @@ class ApiRutaGenRepository
         .whereType<Map>()
         .map((item) => _rewardFromData(Map<String, dynamic>.from(item)))
         .toList();
+  }
+
+  @override
+  Future<List<NewsItem>> getNews({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final response = await _apiClient.get(
+      '/news',
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+    final data = _asMap(response['data']);
+    final rawItems = data['items'];
+
+    if (rawItems is! List) return const [];
+
+    return rawItems
+        .whereType<Map>()
+        .map(
+          (item) => _newsFromData(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<NewsItem> getNewsDetail(String newsId) async {
+    final response = await _apiClient.get('/news/$newsId');
+    return _newsFromData(_asMap(response['data']));
   }
 
   @override
