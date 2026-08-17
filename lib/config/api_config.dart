@@ -2,7 +2,7 @@ class ApiConfig {
   ApiConfig._();
 
   static const String serverUrl =
-      'https://73nl7wkp-4001.brs.devtunnels.ms';
+      'https://api.rutagen.com.ar';
 
   static const String baseUrl =
       '$serverUrl/api';

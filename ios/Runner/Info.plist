@@ -41,6 +41,9 @@
 
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Ruta Gen utiliza tu ubicación para mostrarte las estaciones cercanas y calcular la distancia.</string>
+	
+	<key>NSFaceIDUsageDescription</key>
+	<string>Ruta Gen utiliza Face ID para permitirte iniciar sesión de forma segura.</string>
 
 	<key>UIApplicationSceneManifest</key>
 	<dict>

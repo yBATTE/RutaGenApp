@@ -37,7 +37,6 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
-
     _currentUser = widget.user;
   }
 
@@ -52,6 +51,23 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  /*
+   * Actualiza inmediatamente los datos del usuario
+   * después de editar el perfil.
+   */
+  void _handleUserUpdated(UserModel updatedUser) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _currentUser = updatedUser;
+    });
+  }
+
+  /*
+   * Consulta nuevamente el usuario en el backend.
+   */
   Future<void> _refreshCurrentUser() async {
     if (_refreshingUser) {
       return;
@@ -126,9 +142,19 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  void _openMovements() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MovementsPage(
+          repository: widget.repository,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pages = [
+    final pages = <Widget>[
       HomePage(
         repository: widget.repository,
         user: _currentUser,
@@ -151,6 +177,7 @@ class _AppShellState extends State<AppShell> {
       ),
       AccountPage(
         user: _currentUser,
+        onUserUpdated: _handleUserUpdated,
         onLogout: widget.onLogout,
       ),
     ];
@@ -165,8 +192,9 @@ class _AppShellState extends State<AppShell> {
         onDestinationSelected: _goTo,
         height: 72,
         backgroundColor: Colors.white,
-        indicatorColor:
-            AppColors.blue.withValues(alpha: 0.12),
+        indicatorColor: AppColors.blue.withValues(
+          alpha: 0.12,
+        ),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -203,18 +231,12 @@ class _AppShellState extends State<AppShell> {
       ),
       floatingActionButton: _index == 0
           ? FloatingActionButton.small(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MovementsPage(
-                      repository: widget.repository,
-                    ),
-                  ),
-                );
-              },
+              onPressed: _openMovements,
               backgroundColor: AppColors.navy,
               foregroundColor: Colors.white,
-              child: const Icon(Icons.history_rounded),
+              child: const Icon(
+                Icons.history_rounded,
+              ),
             )
           : null,
     );

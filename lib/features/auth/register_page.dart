@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/biometric_service.dart';
 import '../../shared/widgets/ruta_gen_logo.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -18,16 +19,25 @@ class RegisterPage extends StatefulWidget {
       _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState
+    extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _pageController = PageController();
 
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
-  final _dniController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _firstNameController =
+      TextEditingController();
+
+  final _lastNameController =
+      TextEditingController();
+
+  final _dniController =
+      TextEditingController();
+
+  final _emailController =
+      TextEditingController();
+
+  final _passwordController =
+      TextEditingController();
 
   int _step = 0;
   bool _accepted = false;
@@ -42,7 +52,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _dniController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _phoneController.dispose();
+
     super.dispose();
   }
 
@@ -58,7 +68,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
       await _pageController.animateToPage(
         1,
-        duration: const Duration(milliseconds: 280),
+        duration:
+            const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
       );
 
@@ -69,6 +80,7 @@ class _RegisterPageState extends State<RegisterPage> {
       _showMessage(
         'Debés aceptar los términos y condiciones.',
       );
+
       return;
     }
 
@@ -78,15 +90,27 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _register() async {
     setState(() => _loading = true);
 
+    final dni = _dniController.text.trim();
+    final password = _passwordController.text;
+
     try {
-await AuthService.instance.register(
-  firstName: _firstNameController.text.trim(),
-  lastName: _lastNameController.text.trim(),
-  dni: _dniController.text.trim(),
-  email: _emailController.text.trim(),
-  password: _passwordController.text,
-  acceptedTerms: _accepted,
-);
+      await AuthService.instance.register(
+        firstName:
+            _firstNameController.text.trim(),
+        lastName:
+            _lastNameController.text.trim(),
+        dni: dni,
+        email: _emailController.text.trim(),
+        password: password,
+        acceptedTerms: _accepted,
+      );
+
+      if (!mounted) return;
+
+      await _offerBiometricSetup(
+        identifier: dni,
+        password: password,
+      );
 
       if (!mounted) return;
 
@@ -109,6 +133,88 @@ await AuthService.instance.register(
     }
   }
 
+  Future<void> _offerBiometricSetup({
+    required String identifier,
+    required String password,
+  }) async {
+    final alreadyEnabled =
+        await AuthService.instance
+            .isBiometricEnabled();
+
+    if (alreadyEnabled || !mounted) {
+      return;
+    }
+
+    final available =
+        await AuthService.instance
+            .isBiometricAvailable();
+
+    if (!available || !mounted) {
+      return;
+    }
+
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.fingerprint_rounded,
+            size: 42,
+            color: AppColors.blue,
+          ),
+          title: const Text(
+            'Activar ingreso biométrico',
+          ),
+          content: const Text(
+            '¿Querés guardar tus credenciales de forma segura para ingresar automáticamente con huella o Face ID la próxima vez?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext)
+                    .pop(false);
+              },
+              child: const Text('Ahora no'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext)
+                    .pop(true);
+              },
+              icon: const Icon(
+                Icons.fingerprint_rounded,
+              ),
+              label: const Text('Activar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (accepted != true || !mounted) {
+      return;
+    }
+
+    try {
+      await AuthService.instance
+          .enableBiometrics(
+        identifier: identifier,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      _showMessage(
+        'Ingreso biométrico activado correctamente.',
+      );
+    } on BiometricException catch (error) {
+      if (!mounted) return;
+
+      _showMessage(error.message);
+    }
+  }
+
   Future<void> _goBackStep() async {
     if (_step == 0 || _loading) {
       Navigator.of(context).pop();
@@ -119,7 +225,8 @@ await AuthService.instance.register(
 
     await _pageController.animateToPage(
       0,
-      duration: const Duration(milliseconds: 280),
+      duration:
+          const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
     );
   }
@@ -130,7 +237,8 @@ await AuthService.instance.register(
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          behavior: SnackBarBehavior.floating,
+          behavior:
+              SnackBarBehavior.floating,
         ),
       );
   }
@@ -145,16 +253,22 @@ await AuthService.instance.register(
       appBar: AppBar(
         foregroundColor: Colors.white,
         leading: IconButton(
-          onPressed: _loading ? null : _goBackStep,
-          icon: const Icon(Icons.arrow_back),
+          onPressed:
+              _loading ? null : _goBackStep,
+          icon: const Icon(
+            Icons.arrow_back,
+          ),
         ),
-        title: const RutaGenLogo(compact: true),
+        title: const RutaGenLogo(
+          compact: true,
+        ),
         centerTitle: true,
       ),
       body: Container(
         decoration: const BoxDecoration(
           color: Color(0xFFF9FBFE),
-          borderRadius: BorderRadius.vertical(
+          borderRadius:
+              BorderRadius.vertical(
             top: Radius.circular(28),
           ),
         ),
@@ -163,7 +277,8 @@ await AuthService.instance.register(
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(
+                padding:
+                    const EdgeInsets.fromLTRB(
                   24,
                   24,
                   24,
@@ -175,7 +290,8 @@ await AuthService.instance.register(
                       'Crear cuenta',
                       style: TextStyle(
                         fontSize: 28,
-                        fontWeight: FontWeight.w900,
+                        fontWeight:
+                            FontWeight.w900,
                         color: AppColors.ink,
                       ),
                     ),
@@ -184,7 +300,8 @@ await AuthService.instance.register(
                       'Paso ${_step + 1} de 2',
                       style: const TextStyle(
                         color: AppColors.blue,
-                        fontWeight: FontWeight.w700,
+                        fontWeight:
+                            FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -192,7 +309,9 @@ await AuthService.instance.register(
                       value: (_step + 1) / 2,
                       minHeight: 5,
                       borderRadius:
-                          BorderRadius.circular(20),
+                          BorderRadius.circular(
+                        20,
+                      ),
                     ),
                   ],
                 ),
@@ -212,14 +331,17 @@ await AuthService.instance.register(
                         _RegisterField(
                           controller:
                               _firstNameController,
-                          icon: Icons.person_outline,
+                          icon:
+                              Icons.person_outline,
                           hint: 'Nombre',
                           enabled: !_loading,
                           textInputAction:
                               TextInputAction.next,
                           validator: (value) {
                             if (value == null ||
-                                value.trim().isEmpty) {
+                                value
+                                    .trim()
+                                    .isEmpty) {
                               return 'Ingresá tu nombre.';
                             }
 
@@ -229,14 +351,17 @@ await AuthService.instance.register(
                         _RegisterField(
                           controller:
                               _lastNameController,
-                          icon: Icons.person_outline,
+                          icon:
+                              Icons.person_outline,
                           hint: 'Apellido',
                           enabled: !_loading,
                           textInputAction:
                               TextInputAction.next,
                           validator: (value) {
                             if (value == null ||
-                                value.trim().isEmpty) {
+                                value
+                                    .trim()
+                                    .isEmpty) {
                               return 'Ingresá tu apellido.';
                             }
 
@@ -244,8 +369,10 @@ await AuthService.instance.register(
                           },
                         ),
                         _RegisterField(
-                          controller: _dniController,
-                          icon: Icons.badge_outlined,
+                          controller:
+                              _dniController,
+                          icon:
+                              Icons.badge_outlined,
                           hint: 'DNI',
                           enabled: !_loading,
                           keyboardType:
@@ -254,39 +381,48 @@ await AuthService.instance.register(
                               TextInputAction.next,
                           validator: (value) {
                             final dni =
-                                value?.trim() ?? '';
+                                value?.trim() ??
+                                    '';
 
                             if (dni.isEmpty) {
                               return 'Ingresá tu DNI.';
                             }
 
-                            if (!RegExp(r'^\d+$')
-                                .hasMatch(dni)) {
-                              return 'El DNI debe contener solamente números.';
+                            if (!RegExp(
+                              r'^\d{6,12}$',
+                            ).hasMatch(dni)) {
+                              return 'El DNI debe contener entre 6 y 12 números.';
                             }
 
                             return null;
                           },
                         ),
                         _RegisterField(
-                          controller: _emailController,
-                          icon: Icons.email_outlined,
-                          hint: 'Correo electrónico',
+                          controller:
+                              _emailController,
+                          icon:
+                              Icons.email_outlined,
+                          hint:
+                              'Correo electrónico',
                           enabled: !_loading,
                           keyboardType:
-                              TextInputType.emailAddress,
+                              TextInputType
+                                  .emailAddress,
                           textInputAction:
                               TextInputAction.next,
                           validator: (value) {
                             final email =
-                                value?.trim() ?? '';
+                                value?.trim() ??
+                                    '';
 
                             if (email.isEmpty) {
                               return 'Ingresá tu correo electrónico.';
                             }
 
-                            if (!email.contains('@') ||
-                                !email.contains('.')) {
+                            if (!email
+                                    .contains('@') ||
+                                !email
+                                    .contains('.')) {
                               return 'Ingresá un correo válido.';
                             }
 
@@ -296,13 +432,16 @@ await AuthService.instance.register(
                         _RegisterField(
                           controller:
                               _passwordController,
-                          icon: Icons.lock_outline,
+                          icon:
+                              Icons.lock_outline,
                           hint: 'Contraseña',
                           enabled: !_loading,
-                          obscure: _obscurePassword,
+                          obscure:
+                              _obscurePassword,
                           textInputAction:
                               TextInputAction.done,
-                          suffixIcon: IconButton(
+                          suffixIcon:
+                              IconButton(
                             onPressed: _loading
                                 ? null
                                 : () {
@@ -325,9 +464,29 @@ await AuthService.instance.register(
                             }
                           },
                           validator: (value) {
-                            if (value == null ||
-                                value.isEmpty) {
+                            final password =
+                                value ?? '';
+
+                            if (password
+                                .isEmpty) {
                               return 'Ingresá una contraseña.';
+                            }
+
+                            if (password.length <
+                                    8 ||
+                                password.length >
+                                    72 ||
+                                !RegExp(
+                                  r'[A-Za-z]',
+                                ).hasMatch(
+                                  password,
+                                ) ||
+                                !RegExp(
+                                  r'\d',
+                                ).hasMatch(
+                                  password,
+                                )) {
+                              return 'Usá entre 8 y 72 caracteres, con letras y números.';
                             }
 
                             return null;
@@ -341,32 +500,59 @@ await AuthService.instance.register(
                         horizontal: 24,
                       ),
                       children: [
-                        const Text(
-                          'Tu estación favorita',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
+                        Container(
+                          padding:
+                              const EdgeInsets.all(
+                            20,
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        const _StationCard(),
-                        const SizedBox(height: 12),
-                        _RegisterField(
-                          controller: _phoneController,
-                          icon: Icons.phone_outlined,
-                          hint: 'Teléfono (opcional)',
-                          enabled: !_loading,
-                          keyboardType:
-                              TextInputType.phone,
-                          textInputAction:
-                              TextInputAction.done,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Después vas a poder activar huella o Face ID desde Seguridad y biometría.',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            height: 1.45,
+                          decoration:
+                              BoxDecoration(
+                            color: Colors.white,
+                            borderRadius:
+                                BorderRadius.circular(
+                              18,
+                            ),
+                            border: Border.all(
+                              color: AppColors.blue
+                                  .withValues(
+                                alpha: 0.20,
+                              ),
+                            ),
+                          ),
+                          child: const Column(
+                            children: [
+                              Icon(
+                                Icons
+                                    .fingerprint_rounded,
+                                size: 54,
+                                color:
+                                    AppColors.blue,
+                              ),
+                              SizedBox(height: 14),
+                              Text(
+                                'Protegé tu cuenta',
+                                textAlign:
+                                    TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight:
+                                      FontWeight.w900,
+                                  color:
+                                      AppColors.ink,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Después de crear tu cuenta vas a poder activar el ingreso automático con huella o Face ID.',
+                                textAlign:
+                                    TextAlign.center,
+                                style: TextStyle(
+                                  color:
+                                      AppColors.muted,
+                                  height: 1.45,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -375,7 +561,8 @@ await AuthService.instance.register(
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(
+                padding:
+                    const EdgeInsets.fromLTRB(
                   20,
                   10,
                   20,
@@ -391,21 +578,26 @@ await AuthService.instance.register(
                             : (value) {
                                 setState(() {
                                   _accepted =
-                                      value ?? false;
+                                      value ??
+                                          false;
                                 });
                               },
-                        contentPadding: EdgeInsets.zero,
+                        contentPadding:
+                            EdgeInsets.zero,
                         controlAffinity:
                             ListTileControlAffinity
                                 .leading,
                         title: const Text(
                           'Acepto los términos y condiciones',
-                          style: TextStyle(fontSize: 14),
+                          style: TextStyle(
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     FilledButton(
-                      onPressed:
-                          canSubmit ? _continue : null,
+                      onPressed: canSubmit
+                          ? _continue
+                          : null,
                       child: _loading
                           ? const SizedBox.square(
                               dimension: 22,
@@ -460,7 +652,8 @@ class _RegisterField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding:
+          const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: controller,
         enabled: enabled,
@@ -468,52 +661,13 @@ class _RegisterField extends StatelessWidget {
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         validator: validator,
-        onFieldSubmitted: onFieldSubmitted,
+        onFieldSubmitted:
+            onFieldSubmitted,
         decoration: InputDecoration(
           prefixIcon: Icon(icon),
           hintText: hint,
           suffixIcon: suffixIcon,
         ),
-      ),
-    );
-  }
-}
-
-class _StationCard extends StatelessWidget {
-  const _StationCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.blue.withValues(alpha: 0.25),
-        ),
-      ),
-      child: const Row(
-        children: [
-          Icon(
-            Icons.local_gas_station_outlined,
-            color: AppColors.blue,
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Combustibles Canning',
-              style: TextStyle(
-                color: AppColors.ink,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Icon(
-            Icons.check_circle,
-            color: AppColors.blue,
-          ),
-        ],
       ),
     );
   }

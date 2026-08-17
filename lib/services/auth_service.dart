@@ -1,5 +1,6 @@
 import '../models/user_model.dart';
 import 'api_client.dart';
+import 'biometric_service.dart';
 
 class AuthService {
   AuthService._();
@@ -7,12 +8,11 @@ class AuthService {
   static final AuthService instance = AuthService._();
 
   final ApiClient _apiClient = ApiClient.instance;
+  final BiometricService _biometricService =
+      BiometricService.instance;
 
   /* ============================================================
      REGISTRAR CLIENTE
-
-     El backend devuelve el usuario y el qrToken.
-     Después del registro se inicia sesión automáticamente.
   ============================================================ */
 
   Future<UserModel> register({
@@ -30,7 +30,8 @@ class AuthService {
 
     if (!acceptedTerms) {
       throw const ApiException(
-        message: 'Debés aceptar los términos y condiciones.',
+        message:
+            'Debés aceptar los términos y condiciones.',
       );
     }
 
@@ -50,29 +51,24 @@ class AuthService {
     final data = _extractData(response);
     final qrToken = data['qrToken'];
 
-    if (qrToken is! String || qrToken.trim().isEmpty) {
+    if (qrToken is! String ||
+        qrToken.trim().isEmpty) {
       throw const ApiException(
         message:
             'La cuenta fue creada, pero no se pudo guardar el código QR.',
       );
     }
 
-    await _apiClient.saveQrToken(qrToken.trim());
+    await _apiClient.saveQrToken(
+      qrToken.trim(),
+    );
 
-    /*
-     * El registro no devuelve accessToken.
-     * Por eso iniciamos sesión automáticamente.
-     */
     try {
       return await login(
         identifier: cleanDni,
         password: password,
       );
     } catch (error) {
-      /*
-       * Conservamos el QR porque la cuenta ya fue creada.
-       * El usuario podrá iniciar sesión manualmente.
-       */
       if (error is ApiException) {
         throw ApiException(
           message:
@@ -87,9 +83,7 @@ class AuthService {
   }
 
   /* ============================================================
-     INICIAR SESIÓN
-
-     identifier puede ser el DNI o el email del cliente.
+     INICIAR SESIÓN MANUAL
   ============================================================ */
 
   Future<UserModel> login({
@@ -137,15 +131,66 @@ class AuthService {
       accessToken.trim(),
     );
 
+    /*
+     * Si la biometría ya estaba habilitada,
+     * actualizamos las credenciales guardadas.
+     */
+    if (await _biometricService.isEnabled()) {
+      await _biometricService.updateCredentials(
+        identifier: cleanIdentifier,
+        password: password,
+      );
+    }
+
     return user;
   }
 
   /* ============================================================
-     OBTENER SESIÓN ACTUAL
+     INICIAR SESIÓN CON BIOMETRÍA
+  ============================================================ */
+
+  Future<UserModel> loginWithBiometrics() async {
+    final credentials =
+        await _biometricService
+            .getCredentialsAfterAuthentication();
+
+    /*
+     * Primero intentamos utilizar el token actual.
+     * La biometría igualmente ya fue solicitada.
+     */
+    final restoredUser = await restoreSession();
+
+    if (restoredUser != null) {
+      return restoredUser;
+    }
+
+    try {
+      return await login(
+        identifier: credentials.identifier,
+        password: credentials.password,
+      );
+    } on ApiException catch (error) {
+      /*
+       * Si las credenciales dejaron de ser válidas,
+       * deshabilitamos la biometría para evitar
+       * intentos automáticos repetidos.
+       */
+      if (error.isUnauthorized) {
+        await _biometricService.disable();
+      }
+
+      rethrow;
+    }
+  }
+
+  /* ============================================================
+     OBTENER USUARIO ACTUAL
   ============================================================ */
 
   Future<UserModel> getCurrentUser() async {
-    final response = await _apiClient.get('/auth/me');
+    final response =
+        await _apiClient.get('/auth/me');
+
     final data = _extractData(response);
     final user = _extractUser(data);
 
@@ -155,14 +200,12 @@ class AuthService {
   }
 
   /* ============================================================
-     RESTAURAR SESIÓN AL ABRIR LA APP
-
-     Devuelve el usuario si el token sigue siendo válido.
-     Devuelve null si no existe sesión o si venció.
+     RESTAURAR TOKEN
   ============================================================ */
 
   Future<UserModel?> restoreSession() async {
-    final hasSession = await _apiClient.hasSession();
+    final hasSession =
+        await _apiClient.hasSession();
 
     if (!hasSession) {
       return null;
@@ -171,7 +214,8 @@ class AuthService {
     try {
       return await getCurrentUser();
     } on ApiException catch (error) {
-      if (error.isUnauthorized || error.isForbidden) {
+      if (error.isUnauthorized ||
+          error.isForbidden) {
         await _apiClient.clearSession();
         return null;
       }
@@ -181,13 +225,93 @@ class AuthService {
   }
 
   /* ============================================================
-     CERRAR SESIÓN
-
-     Se elimina el accessToken, pero se conserva el qrToken.
+     ACTUALIZAR TELÉFONO
   ============================================================ */
 
-  Future<void> logout() async {
+  Future<UserModel> updatePhone(
+    String phone,
+  ) async {
+    final response = await _apiClient.patch(
+      '/users/me',
+      body: {
+        'phone': phone.trim(),
+      },
+    );
+
+    final data = _extractData(response);
+    final user = _extractUser(data);
+
+    _validateCustomer(user);
+
+    return user;
+  }
+
+  /* ============================================================
+     CAMBIAR CONTRASEÑA
+  ============================================================ */
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _apiClient.patch(
+      '/users/me/password',
+      body: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+
+    /*
+     * Si la biometría estaba activa, guardamos
+     * la nueva contraseña cifrada.
+     */
+    await _biometricService.updatePassword(
+      newPassword,
+    );
+  }
+
+  /* ============================================================
+     CERRAR SESIÓN
+
+     Se elimina el token, pero se mantienen las
+     credenciales biométricas.
+  ============================================================ */
+
+  Future<void> logout({
+    bool removeBiometrics = false,
+  }) async {
     await _apiClient.clearSession();
+
+    if (removeBiometrics) {
+      await _biometricService.disable();
+    }
+  }
+
+  /* ============================================================
+     BIOMETRÍA
+  ============================================================ */
+
+  Future<bool> isBiometricAvailable() {
+    return _biometricService.isAvailable();
+  }
+
+  Future<bool> isBiometricEnabled() {
+    return _biometricService.isEnabled();
+  }
+
+  Future<void> enableBiometrics({
+    required String identifier,
+    required String password,
+  }) {
+    return _biometricService.enable(
+      identifier: identifier,
+      password: password,
+    );
+  }
+
+  Future<void> disableBiometrics() {
+    return _biometricService.disable();
   }
 
   /* ============================================================
@@ -201,29 +325,36 @@ class AuthService {
   Future<bool> hasQrToken() async {
     final qrToken = await getQrToken();
 
-    return qrToken != null && qrToken.isNotEmpty;
+    return qrToken != null &&
+        qrToken.isNotEmpty;
   }
 
-  Future<void> saveQrToken(String qrToken) async {
+  Future<void> saveQrToken(
+    String qrToken,
+  ) async {
     final cleanQrToken = qrToken.trim();
 
     if (cleanQrToken.isEmpty) {
       throw const ApiException(
-        message: 'El código QR recibido no es válido.',
+        message:
+            'El código QR recibido no es válido.',
       );
     }
 
-    await _apiClient.saveQrToken(cleanQrToken);
+    await _apiClient.saveQrToken(
+      cleanQrToken,
+    );
   }
 
   /* ============================================================
      ELIMINAR TODOS LOS DATOS LOCALES
-
-     Usar únicamente cuando se quiera borrar también el QR.
   ============================================================ */
 
   Future<void> clearAllLocalData() async {
-    await _apiClient.clearAllSecureData();
+    await Future.wait([
+      _apiClient.clearAllSecureData(),
+      _biometricService.disable(),
+    ]);
   }
 
   /* ============================================================
@@ -237,6 +368,12 @@ class AuthService {
 
     if (data is Map<String, dynamic>) {
       return data;
+    }
+
+    if (data is Map) {
+      return Map<String, dynamic>.from(
+        data,
+      );
     }
 
     throw const ApiException(
@@ -254,10 +391,12 @@ class AuthService {
       return UserModel.fromJson(user);
     }
 
-    /*
-     * También permite que /auth/me devuelva directamente
-     * el usuario dentro de data.
-     */
+    if (user is Map) {
+      return UserModel.fromJson(
+        Map<String, dynamic>.from(user),
+      );
+    }
+
     if (data.containsKey('id') ||
         data.containsKey('_id') ||
         data.containsKey('dni')) {
@@ -270,7 +409,9 @@ class AuthService {
     );
   }
 
-  void _validateCustomer(UserModel user) {
+  void _validateCustomer(
+    UserModel user,
+  ) {
     if (!user.isCustomer) {
       throw const ApiException(
         message:
