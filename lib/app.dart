@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_colors.dart';
@@ -8,25 +10,20 @@ import 'features/shell/app_shell.dart';
 import 'models/user_model.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
+import 'services/push_notification_service.dart';
 import 'shared/widgets/ruta_gen_logo.dart';
 
 class RutaGenApp extends StatefulWidget {
-  const RutaGenApp({
-    super.key,
-    required this.repository,
-  });
+  const RutaGenApp({super.key, required this.repository});
 
   final RutaGenRepository repository;
 
   @override
-  State<RutaGenApp> createState() =>
-      _RutaGenAppState();
+  State<RutaGenApp> createState() => _RutaGenAppState();
 }
 
-class _RutaGenAppState extends State<RutaGenApp>
-    with WidgetsBindingObserver {
-  final GlobalKey<ScaffoldMessengerState>
-      _messengerKey =
+class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
+  final GlobalKey<ScaffoldMessengerState> _messengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
   UserModel? _currentUser;
@@ -34,6 +31,7 @@ class _RutaGenAppState extends State<RutaGenApp>
   bool _checkingSession = true;
   bool _biometricFlowRunning = false;
   bool _requiresUnlockOnResume = false;
+  StreamSubscription<PushMessage>? _pushSubscription;
 
   @override
   void initState() {
@@ -41,20 +39,22 @@ class _RutaGenAppState extends State<RutaGenApp>
 
     WidgetsBinding.instance.addObserver(this);
 
+    _pushSubscription = PushNotificationService.instance.foregroundMessages
+        .listen(_showForegroundNotification);
+
     _authenticateOnStartup();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pushSubscription?.cancel();
 
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(
-    AppLifecycleState state,
-  ) {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
     /*
@@ -84,9 +84,7 @@ class _RutaGenAppState extends State<RutaGenApp>
         !_biometricFlowRunning) {
       _requiresUnlockOnResume = false;
 
-      _authenticateWithBiometrics(
-        showErrors: true,
-      );
+      _authenticateWithBiometrics(showErrors: true);
     }
   }
 
@@ -95,18 +93,14 @@ class _RutaGenAppState extends State<RutaGenApp>
   ============================================================ */
 
   Future<void> _authenticateOnStartup() async {
-    await _authenticateWithBiometrics(
-      showErrors: false,
-    );
+    await _authenticateWithBiometrics(showErrors: false);
   }
 
   /* ============================================================
      AUTENTICACIÓN BIOMÉTRICA AUTOMÁTICA
   ============================================================ */
 
-  Future<void> _authenticateWithBiometrics({
-    required bool showErrors,
-  }) async {
+  Future<void> _authenticateWithBiometrics({required bool showErrors}) async {
     if (_biometricFlowRunning) {
       return;
     }
@@ -120,26 +114,11 @@ class _RutaGenAppState extends State<RutaGenApp>
     }
 
     try {
-      final enabled =
-          await AuthService.instance
-              .isBiometricEnabled();
+      final enabled = await AuthService.instance.isBiometricEnabled();
 
-      if (!enabled) {
-        await AuthService.instance.logout();
-
-        if (!mounted) return;
-
-        setState(() {
-          _currentUser = null;
-          _checkingSession = false;
-        });
-
-        return;
-      }
-
-      final user =
-          await AuthService.instance
-              .loginWithBiometrics();
+      final user = enabled
+          ? await AuthService.instance.loginWithBiometrics()
+          : await AuthService.instance.restoreSession();
 
       if (!mounted) return;
 
@@ -147,11 +126,9 @@ class _RutaGenAppState extends State<RutaGenApp>
         _currentUser = user;
         _checkingSession = false;
       });
+
+      if (user != null) unawaited(_bindPushAfterAuthentication());
     } on BiometricException catch (error) {
-      if (!mounted) return;
-
-      await AuthService.instance.logout();
-
       if (!mounted) return;
 
       setState(() {
@@ -165,10 +142,6 @@ class _RutaGenAppState extends State<RutaGenApp>
     } catch (_) {
       if (!mounted) return;
 
-      await AuthService.instance.logout();
-
-      if (!mounted) return;
-
       setState(() {
         _currentUser = null;
         _checkingSession = false;
@@ -176,7 +149,7 @@ class _RutaGenAppState extends State<RutaGenApp>
 
       if (showErrors) {
         _showMessage(
-          'No se pudo iniciar sesión con biometría. Podés ingresar con tu DNI o correo.',
+          'No se pudo recuperar la sesión. Revisá la conexión o ingresá con tu DNI o correo.',
         );
       }
     } finally {
@@ -188,35 +161,23 @@ class _RutaGenAppState extends State<RutaGenApp>
      LOGIN O REGISTRO COMPLETADO
   ============================================================ */
 
-  Future<void> _handleAuthenticated() async {
-    if (mounted) {
-      setState(() {
-        _checkingSession = true;
-      });
-    }
+  void _handleAuthenticated(UserModel user) {
+    if (!mounted) return;
+    _requiresUnlockOnResume = false;
+    // Login ya validó al cliente y guardó el token. Evitamos otro /auth/me
+    // que podría fallar por red y devolver al login después de un alta exitosa.
+    setState(() {
+      _currentUser = user;
+      _checkingSession = false;
+    });
+    unawaited(_bindPushAfterAuthentication());
+  }
 
+  Future<void> _bindPushAfterAuthentication() async {
     try {
-      final user =
-          await AuthService.instance
-              .getCurrentUser();
-
-      if (!mounted) return;
-
-      setState(() {
-        _currentUser = user;
-        _checkingSession = false;
-      });
+      await PushNotificationService.instance.bindToCurrentUser();
     } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _currentUser = null;
-        _checkingSession = false;
-      });
-
-      _showMessage(
-        'No se pudieron obtener los datos de la cuenta.',
-      );
+      // Un fallo al registrar notificaciones no debe bloquear el inicio.
     }
   }
 
@@ -229,6 +190,7 @@ class _RutaGenAppState extends State<RutaGenApp>
   ============================================================ */
 
   Future<void> _logout() async {
+    await PushNotificationService.instance.unregisterCurrentDevice();
     await AuthService.instance.logout();
 
     if (!mounted) return;
@@ -241,18 +203,32 @@ class _RutaGenAppState extends State<RutaGenApp>
     });
   }
 
-  void _showMessage(
-    String message,
-  ) {
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) {
+  void _showMessage(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _messengerKey.currentState
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+        );
+    });
+  }
+
+  void _showForegroundNotification(PushMessage notification) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       _messengerKey.currentState
         ?..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(message),
-            behavior:
-                SnackBarBehavior.floating,
+            content: Text('${notification.title}\n${notification.body}'),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Ver',
+              onPressed: () {
+                PushNotificationService.instance.openAction(
+                  notification.action,
+                );
+              },
+            ),
           ),
         );
     });
@@ -275,8 +251,7 @@ class _RutaGenAppState extends State<RutaGenApp>
     }
 
     return AnimatedSwitcher(
-      duration:
-          const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 280),
       child: _currentUser != null
           ? AppShell(
               key: const ValueKey('app'),
@@ -286,8 +261,7 @@ class _RutaGenAppState extends State<RutaGenApp>
             )
           : LoginPage(
               key: const ValueKey('login'),
-              onAuthenticated:
-                  _handleAuthenticated,
+              onAuthenticated: _handleAuthenticated,
             ),
     );
   }
@@ -305,23 +279,16 @@ class _SessionLoadingPage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.navyDeep,
-              AppColors.navy,
-              Color(0xFF00356C),
-            ],
+            colors: [AppColors.navyDeep, AppColors.navy, Color(0xFF00356C)],
           ),
         ),
         child: const SafeArea(
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               RutaGenLogo(),
               SizedBox(height: 32),
-              CircularProgressIndicator(
-                color: AppColors.cyan,
-              ),
+              CircularProgressIndicator(color: AppColors.cyan),
             ],
           ),
         ),

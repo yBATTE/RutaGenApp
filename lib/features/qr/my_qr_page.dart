@@ -77,7 +77,7 @@ class _MyQrPageState extends State<MyQrPage> {
   void didUpdateWidget(covariant MyQrPage oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Cada vez que el usuario vuelve a abrir la pestaÃ±a consultamos MongoDB.
+    // Cada vez que el usuario vuelve a abrir la pestaña consultamos MongoDB.
     // El backend devuelve el mismo QR vigente o reemplaza el vencido.
     if (widget.isActive && !oldWidget.isActive) {
       _loadCurrentQr(showLoading: _qr == null);
@@ -123,7 +123,7 @@ class _MyQrPageState extends State<MyQrPage> {
     final repository = _qrRepository;
     if (repository == null) {
       setState(() {
-        _errorMessage = 'La versiÃ³n actual del repositorio no admite QR temporal.';
+        _errorMessage = 'La versión actual del repositorio no admite QR temporal.';
       });
       return;
     }
@@ -144,8 +144,8 @@ class _MyQrPageState extends State<MyQrPage> {
 
       if (!mounted) return;
 
-      // Si el QR visible venciÃ³ mientras se consultaba su estado, no mostramos
-      // otro automÃ¡ticamente. El usuario deberÃ¡ generarlo con el botÃ³n.
+      // Si el QR visible venció mientras se consultaba su estado, no mostramos
+      // otro automáticamente. El usuario deberá generarlo con el botón.
       if (wasCheckingActiveQr && _remainingSeconds == 0) {
         setState(() {
           _loading = false;
@@ -170,7 +170,7 @@ class _MyQrPageState extends State<MyQrPage> {
       if (renew) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Generamos un QR nuevo. El anterior ya no es vÃ¡lido.'),
+            content: Text('Generamos un QR nuevo. El anterior ya no es válido.'),
           ),
         );
       }
@@ -207,7 +207,7 @@ class _MyQrPageState extends State<MyQrPage> {
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = 'No se pudo obtener el cÃ³digo QR. IntentÃ¡ nuevamente.';
+        _errorMessage = 'No se pudo obtener el código QR. Intentá nuevamente.';
         _loading = false;
       });
     } finally {
@@ -495,7 +495,7 @@ class _MyQrPageState extends State<MyQrPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Este cÃ³digo ya no es vÃ¡lido.',
+              'Este código ya no es válido.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted),
             ),

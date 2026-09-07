@@ -106,6 +106,15 @@ class AccountPage extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 _InformationTile(
+                  icon: Icons.verified_user_outlined,
+                  title: 'Identidad',
+                  value: user.identityVerified
+                      ? 'Verificada'
+                      : 'Pendiente de verificación',
+                  verified: user.identityVerified,
+                ),
+                const Divider(height: 1),
+                _InformationTile(
                   icon:
                       Icons.email_outlined,
                   title:
@@ -345,13 +354,14 @@ class _ProfileCard extends StatelessWidget {
                         20,
                       ),
                     ),
-                    child: const Text(
-                      'Cuenta activa',
-                      style: TextStyle(
+                    child: Text(
+                      user.identityVerified
+                          ? 'Cuenta verificada'
+                          : 'Verificación pendiente',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
-                        fontWeight:
-                            FontWeight.w700,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),

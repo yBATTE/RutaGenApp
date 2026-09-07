@@ -12,7 +12,11 @@ class UserModel {
     required this.lifetimePointsRedeemed,
     required this.emailVerified,
     required this.phoneVerified,
+    required this.identityVerified,
     this.phone,
+    this.identityVerifiedAt,
+    this.identityVerifiedStationSlug,
+    this.identityVerifiedStationName,
     this.memberCode,
     this.stationSlug,
     this.stationName,
@@ -46,6 +50,11 @@ class UserModel {
 
   final bool emailVerified;
   final bool phoneVerified;
+  final bool identityVerified;
+
+  final DateTime? identityVerifiedAt;
+  final String? identityVerifiedStationSlug;
+  final String? identityVerifiedStationName;
 
   final DateTime? qrCreatedAt;
   final DateTime? acceptedTermsAt;
@@ -80,6 +89,8 @@ class UserModel {
   bool get isBlocked => status.toUpperCase() == 'BLOCKED';
 
   bool get isDisabled => status.toUpperCase() == 'DISABLED';
+
+  bool get isIdentityPending => !identityVerified;
 
   bool get hasStation {
     return stationSlug != null && stationSlug!.trim().isNotEmpty;
@@ -132,6 +143,24 @@ class UserModel {
       qrVersion: _readNullableInt(json['qrVersion']),
       emailVerified: _readBool(json['emailVerified']),
       phoneVerified: _readBool(json['phoneVerified']),
+      identityVerified: _readBool(json['identityVerified']),
+      identityVerifiedAt: _readDate(
+        json['identityVerifiedAt'] ??
+            (json['identityVerification'] is Map
+                ? json['identityVerification']['verifiedAt']
+                : null),
+      ),
+      identityVerifiedStationSlug: _readNullableString(
+        json['identityVerifiedStationSlug'] ??
+            (json['identityVerification'] is Map
+                ? json['identityVerification']['stationSlug']
+                : null),
+      ),
+      identityVerifiedStationName: _readNullableString(
+        json['identityVerification'] is Map
+            ? json['identityVerification']['stationName']
+            : null,
+      ),
       qrCreatedAt: _readDate(json['qrCreatedAt']),
       acceptedTermsAt: _readDate(json['acceptedTermsAt']),
       lastLoginAt: _readDate(json['lastLoginAt']),
@@ -163,6 +192,10 @@ class UserModel {
       'qrVersion': qrVersion,
       'emailVerified': emailVerified,
       'phoneVerified': phoneVerified,
+      'identityVerified': identityVerified,
+      'identityVerifiedAt': identityVerifiedAt?.toIso8601String(),
+      'identityVerifiedStationSlug': identityVerifiedStationSlug,
+      'identityVerifiedStationName': identityVerifiedStationName,
       'qrCreatedAt': qrCreatedAt?.toIso8601String(),
       'acceptedTermsAt': acceptedTermsAt?.toIso8601String(),
       'lastLoginAt': lastLoginAt?.toIso8601String(),
@@ -193,6 +226,10 @@ class UserModel {
     int? qrVersion,
     bool? emailVerified,
     bool? phoneVerified,
+    bool? identityVerified,
+    DateTime? identityVerifiedAt,
+    String? identityVerifiedStationSlug,
+    String? identityVerifiedStationName,
     DateTime? qrCreatedAt,
     DateTime? acceptedTermsAt,
     DateTime? lastLoginAt,
@@ -219,6 +256,12 @@ class UserModel {
       qrVersion: qrVersion ?? this.qrVersion,
       emailVerified: emailVerified ?? this.emailVerified,
       phoneVerified: phoneVerified ?? this.phoneVerified,
+      identityVerified: identityVerified ?? this.identityVerified,
+      identityVerifiedAt: identityVerifiedAt ?? this.identityVerifiedAt,
+      identityVerifiedStationSlug:
+          identityVerifiedStationSlug ?? this.identityVerifiedStationSlug,
+      identityVerifiedStationName:
+          identityVerifiedStationName ?? this.identityVerifiedStationName,
       qrCreatedAt: qrCreatedAt ?? this.qrCreatedAt,
       acceptedTermsAt:
           acceptedTermsAt ?? this.acceptedTermsAt,

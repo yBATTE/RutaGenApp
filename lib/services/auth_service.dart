@@ -2,14 +2,21 @@ import '../models/user_model.dart';
 import 'api_client.dart';
 import 'biometric_service.dart';
 
+// El alta ya fue confirmada: el siguiente intento debe ser login, no registro.
+class AccountCreatedException extends ApiException {
+  const AccountCreatedException({required super.message});
+}
+
 class AuthService {
-  AuthService._();
+  AuthService._() : _apiClient = ApiClient.instance;
+
+  AuthService.forTesting({required ApiClient apiClient})
+    : _apiClient = apiClient;
 
   static final AuthService instance = AuthService._();
 
-  final ApiClient _apiClient = ApiClient.instance;
-  final BiometricService _biometricService =
-      BiometricService.instance;
+  final ApiClient _apiClient;
+  final BiometricService _biometricService = BiometricService.instance;
 
   /* ============================================================
      REGISTRAR CLIENTE
@@ -30,12 +37,11 @@ class AuthService {
 
     if (!acceptedTerms) {
       throw const ApiException(
-        message:
-            'Debés aceptar los términos y condiciones.',
+        message: 'Debés aceptar los términos y condiciones.',
       );
     }
 
-    final response = await _apiClient.post(
+    await _apiClient.post(
       '/auth/register',
       requiresAuthentication: false,
       body: {
@@ -48,37 +54,16 @@ class AuthService {
       },
     );
 
-    final data = _extractData(response);
-    final qrToken = data['qrToken'];
-
-    if (qrToken is! String ||
-        qrToken.trim().isEmpty) {
-      throw const ApiException(
-        message:
-            'La cuenta fue creada, pero no se pudo guardar el código QR.',
-      );
-    }
-
-    await _apiClient.saveQrToken(
-      qrToken.trim(),
-    );
-
+    // El backend devuelve { data: { user } }. El QR temporal se obtiene
+    // desde su endpoint autenticado, no es un requisito para entrar a la app.
     try {
-      return await login(
-        identifier: cleanDni,
-        password: password,
+      return await login(identifier: cleanDni, password: password);
+    } catch (_) {
+      throw const AccountCreatedException(
+        message:
+            'Tu cuenta ya fue creada. No hace falta registrarte otra vez. '
+            'Tocá Ingresar a mi cuenta para reintentar el acceso.',
       );
-    } catch (error) {
-      if (error is ApiException) {
-        throw ApiException(
-          message:
-              'La cuenta fue creada correctamente, pero no se pudo iniciar sesión automáticamente. ${error.message}',
-          statusCode: error.statusCode,
-          details: error.details,
-        );
-      }
-
-      rethrow;
     }
   }
 
@@ -93,53 +78,46 @@ class AuthService {
     final cleanIdentifier = identifier.trim();
 
     if (cleanIdentifier.isEmpty) {
-      throw const ApiException(
-        message: 'Ingresá tu DNI o email.',
-      );
+      throw const ApiException(message: 'Ingresá tu DNI o email.');
     }
 
     if (password.isEmpty) {
-      throw const ApiException(
-        message: 'Ingresá tu contraseña.',
-      );
+      throw const ApiException(message: 'Ingresá tu contraseña.');
     }
 
     final response = await _apiClient.post(
       '/auth/login',
       requiresAuthentication: false,
-      body: {
-        'identifier': cleanIdentifier,
-        'password': password,
-      },
+      body: {'identifier': cleanIdentifier, 'password': password},
     );
 
     final data = _extractData(response);
     final accessToken = data['accessToken'];
     final user = _extractUser(data);
 
-    if (accessToken is! String ||
-        accessToken.trim().isEmpty) {
+    if (accessToken is! String || accessToken.trim().isEmpty) {
       throw const ApiException(
-        message:
-            'El servidor no devolvió un token de sesión válido.',
+        message: 'El servidor no devolvió un token de sesión válido.',
       );
     }
 
     _validateCustomer(user);
 
-    await _apiClient.saveAccessToken(
-      accessToken.trim(),
-    );
+    await _apiClient.saveAccessToken(accessToken.trim());
 
     /*
      * Si la biometría ya estaba habilitada,
      * actualizamos las credenciales guardadas.
      */
-    if (await _biometricService.isEnabled()) {
-      await _biometricService.updateCredentials(
-        identifier: cleanIdentifier,
-        password: password,
-      );
+    try {
+      if (await _biometricService.isEnabled()) {
+        await _biometricService.updateCredentials(
+          identifier: cleanIdentifier,
+          password: password,
+        );
+      }
+    } catch (_) {
+      // La sesión ya está guardada. Un fallo de biometría no bloquea el acceso.
     }
 
     return user;
@@ -150,9 +128,8 @@ class AuthService {
   ============================================================ */
 
   Future<UserModel> loginWithBiometrics() async {
-    final credentials =
-        await _biometricService
-            .getCredentialsAfterAuthentication();
+    final credentials = await _biometricService
+        .getCredentialsAfterAuthentication();
 
     /*
      * Primero intentamos utilizar el token actual.
@@ -188,8 +165,7 @@ class AuthService {
   ============================================================ */
 
   Future<UserModel> getCurrentUser() async {
-    final response =
-        await _apiClient.get('/auth/me');
+    final response = await _apiClient.get('/auth/me');
 
     final data = _extractData(response);
     final user = _extractUser(data);
@@ -204,8 +180,7 @@ class AuthService {
   ============================================================ */
 
   Future<UserModel?> restoreSession() async {
-    final hasSession =
-        await _apiClient.hasSession();
+    final hasSession = await _apiClient.hasSession();
 
     if (!hasSession) {
       return null;
@@ -214,8 +189,7 @@ class AuthService {
     try {
       return await getCurrentUser();
     } on ApiException catch (error) {
-      if (error.isUnauthorized ||
-          error.isForbidden) {
+      if (error.isUnauthorized || error.isForbidden) {
         await _apiClient.clearSession();
         return null;
       }
@@ -228,14 +202,10 @@ class AuthService {
      ACTUALIZAR TELÉFONO
   ============================================================ */
 
-  Future<UserModel> updatePhone(
-    String phone,
-  ) async {
+  Future<UserModel> updatePhone(String phone) async {
     final response = await _apiClient.patch(
       '/users/me',
-      body: {
-        'phone': phone.trim(),
-      },
+      body: {'phone': phone.trim()},
     );
 
     final data = _extractData(response);
@@ -256,19 +226,14 @@ class AuthService {
   }) async {
     await _apiClient.patch(
       '/users/me/password',
-      body: {
-        'currentPassword': currentPassword,
-        'newPassword': newPassword,
-      },
+      body: {'currentPassword': currentPassword, 'newPassword': newPassword},
     );
 
     /*
      * Si la biometría estaba activa, guardamos
      * la nueva contraseña cifrada.
      */
-    await _biometricService.updatePassword(
-      newPassword,
-    );
+    await _biometricService.updatePassword(newPassword);
   }
 
   /* ============================================================
@@ -278,9 +243,7 @@ class AuthService {
      credenciales biométricas.
   ============================================================ */
 
-  Future<void> logout({
-    bool removeBiometrics = false,
-  }) async {
+  Future<void> logout({bool removeBiometrics = false}) async {
     await _apiClient.clearSession();
 
     if (removeBiometrics) {
@@ -304,10 +267,7 @@ class AuthService {
     required String identifier,
     required String password,
   }) {
-    return _biometricService.enable(
-      identifier: identifier,
-      password: password,
-    );
+    return _biometricService.enable(identifier: identifier, password: password);
   }
 
   Future<void> disableBiometrics() {
@@ -325,25 +285,17 @@ class AuthService {
   Future<bool> hasQrToken() async {
     final qrToken = await getQrToken();
 
-    return qrToken != null &&
-        qrToken.isNotEmpty;
+    return qrToken != null && qrToken.isNotEmpty;
   }
 
-  Future<void> saveQrToken(
-    String qrToken,
-  ) async {
+  Future<void> saveQrToken(String qrToken) async {
     final cleanQrToken = qrToken.trim();
 
     if (cleanQrToken.isEmpty) {
-      throw const ApiException(
-        message:
-            'El código QR recibido no es válido.',
-      );
+      throw const ApiException(message: 'El código QR recibido no es válido.');
     }
 
-    await _apiClient.saveQrToken(
-      cleanQrToken,
-    );
+    await _apiClient.saveQrToken(cleanQrToken);
   }
 
   /* ============================================================
@@ -361,9 +313,7 @@ class AuthService {
      FUNCIONES INTERNAS
   ============================================================ */
 
-  Map<String, dynamic> _extractData(
-    Map<String, dynamic> response,
-  ) {
+  Map<String, dynamic> _extractData(Map<String, dynamic> response) {
     final data = response['data'];
 
     if (data is Map<String, dynamic>) {
@@ -371,20 +321,15 @@ class AuthService {
     }
 
     if (data is Map) {
-      return Map<String, dynamic>.from(
-        data,
-      );
+      return Map<String, dynamic>.from(data);
     }
 
     throw const ApiException(
-      message:
-          'El servidor devolvió una respuesta incompleta.',
+      message: 'El servidor devolvió una respuesta incompleta.',
     );
   }
 
-  UserModel _extractUser(
-    Map<String, dynamic> data,
-  ) {
+  UserModel _extractUser(Map<String, dynamic> data) {
     final user = data['user'];
 
     if (user is Map<String, dynamic>) {
@@ -392,9 +337,7 @@ class AuthService {
     }
 
     if (user is Map) {
-      return UserModel.fromJson(
-        Map<String, dynamic>.from(user),
-      );
+      return UserModel.fromJson(Map<String, dynamic>.from(user));
     }
 
     if (data.containsKey('id') ||
@@ -404,26 +347,21 @@ class AuthService {
     }
 
     throw const ApiException(
-      message:
-          'El servidor no devolvió la información del usuario.',
+      message: 'El servidor no devolvió la información del usuario.',
     );
   }
 
-  void _validateCustomer(
-    UserModel user,
-  ) {
+  void _validateCustomer(UserModel user) {
     if (!user.isCustomer) {
       throw const ApiException(
-        message:
-            'Esta aplicación es exclusivamente para clientes.',
+        message: 'Esta aplicación es exclusivamente para clientes.',
         statusCode: 403,
       );
     }
 
     if (!user.isActive) {
       throw const ApiException(
-        message:
-            'Tu cuenta no está activa. Comunicate con un administrador.',
+        message: 'Tu cuenta no está activa. Comunicate con un administrador.',
         statusCode: 403,
       );
     }

@@ -40,6 +40,52 @@ class MockRutaGenRepository implements RutaGenRepository {
     ];
   }
 
+
+  @override
+  Future<List<GiftReward>> getGiftRewards({
+    String? status,
+  }) async {
+    await Future<void>.delayed(_delay);
+    final items = <GiftReward>[
+      GiftReward(
+        id: 'gift-1',
+        giftCode: 'RG-GIFT-DEMO',
+        qrToken: 'RGP_DEMO_TOKEN',
+        source: 'RANDOM',
+        status: 'AVAILABLE',
+        rewardName: 'Café Ruta GEN',
+        rewardDescription: 'Premio sorpresa',
+        issuedAt: DateTime.now().subtract(const Duration(days: 1)),
+        expiresAt: DateTime.now().add(const Duration(days: 20)),
+        campaignName: 'Sorpresas de septiembre',
+      ),
+    ];
+    if (status == null || status.trim().isEmpty) return items;
+    return items
+        .where((item) => item.status.toUpperCase() == status.toUpperCase())
+        .toList();
+  }
+
+  @override
+  Future<VisitProgress> getVisitProgress() async {
+    await Future<void>.delayed(_delay);
+    return const VisitProgress(
+      monthKey: '2026-09',
+      visitedStations: [
+        VisitStation(slug: 'combustibles-canning-1', name: 'Combustibles Canning 1'),
+        VisitStation(slug: 'catania', name: 'Catania'),
+      ],
+      stationCount: 2,
+      enabled: true,
+      secondStationStatus: 'ISSUED',
+      thirdStationStatus: 'WAITING',
+      remainingForBreakfast: 0,
+      remainingForMeal: 1,
+      secondStationRewardName: 'Desayuno',
+      thirdStationRewardName: 'Almuerzo / cena',
+    );
+  }
+
   @override
   Future<List<Movement>> getMovements({
     int page = 1,

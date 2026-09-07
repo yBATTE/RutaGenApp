@@ -315,7 +315,7 @@ class _MovementsPageState
                   label: Text(
                     _loadingMore
                         ? 'Cargando...'
-                        : 'Cargar mÃ¡s',
+                        : 'Cargar más',
                   ),
                 ),
               ),
@@ -323,7 +323,8 @@ class _MovementsPageState
           }
 
           final movement = _movements[index];
-          final positive = movement.points >= 0;
+          final isGift = movement.isGift;
+          final positive = movement.points > 0;
 
           final showDay = index == 0 ||
               _day(_movements[index - 1].date) !=
@@ -358,19 +359,22 @@ class _MovementsPageState
                         CrossAxisAlignment.start,
                     children: [
                       CircleAvatar(
-                        backgroundColor: positive
-                            ? const Color(0xFFEAF4FF)
-                            : const Color(0xFFFFEEE8),
-                        foregroundColor: positive
-                            ? AppColors.blue
-                            : AppColors.danger,
+                        backgroundColor: isGift
+                            ? const Color(0xFFEFF4FF)
+                            : positive
+                                ? const Color(0xFFEAF4FF)
+                                : const Color(0xFFFFEEE8),
+                        foregroundColor: isGift
+                            ? const Color(0xFF6558D3)
+                            : positive
+                                ? AppColors.blue
+                                : AppColors.danger,
                         child: Icon(
-                          movement.type ==
-                                  MovementType.load
-                              ? Icons
-                                  .local_gas_station_rounded
-                              : Icons
-                                  .card_giftcard_rounded,
+                          movement.type == MovementType.load
+                              ? Icons.local_gas_station_rounded
+                              : movement.type == MovementType.visitBonus
+                                  ? Icons.route_rounded
+                                  : Icons.card_giftcard_rounded,
                         ),
                       ),
                       const SizedBox(width: 13),
@@ -412,13 +416,16 @@ class _MovementsPageState
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${positive ? '+' : '-'}'
-                        '${_points(movement.points)}',
+                        isGift
+                            ? '0 pts'
+                            : '${positive ? '+' : '-'}${_points(movement.points)}',
                         style: TextStyle(
-                          color: positive
-                              ? AppColors.success
-                              : AppColors.danger,
-                          fontSize: 18,
+                          color: isGift
+                              ? const Color(0xFF6558D3)
+                              : positive
+                                  ? AppColors.success
+                                  : AppColors.danger,
+                          fontSize: isGift ? 14 : 18,
                           fontWeight: FontWeight.w900,
                         ),
                       ),

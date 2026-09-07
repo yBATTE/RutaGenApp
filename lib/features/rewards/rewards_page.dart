@@ -12,12 +12,16 @@ class RewardsPage extends StatefulWidget {
     required this.onShowQr,
     required this.isActive,
     required this.onRefreshUser,
+    required this.identityVerified,
+    required this.onOpenGiftRewards,
   });
 
   final RutaGenRepository repository;
   final VoidCallback onShowQr;
   final bool isActive;
   final Future<void> Function() onRefreshUser;
+  final bool identityVerified;
+  final VoidCallback onOpenGiftRewards;
 
   @override
   State<RewardsPage> createState() => _RewardsPageState();
@@ -189,6 +193,81 @@ class _RewardsPageState extends State<RewardsPage> {
                   ),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+                child: Card(
+                  child: InkWell(
+                    onTap: widget.onOpenGiftRewards,
+                    borderRadius: BorderRadius.circular(18),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Color(0xFFEAF4FF),
+                            foregroundColor: AppColors.blue,
+                            child: Icon(Icons.auto_awesome_rounded),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Mis premios regalados',
+                                  style: TextStyle(
+                                    color: AppColors.ink,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Sorteos, sorpresas y beneficios por visitar estaciones.',
+                                  style: TextStyle(
+                                    color: AppColors.muted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (!widget.identityVerified)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 4),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7E8),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: const Color(0xFFFFD58A)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.lock_outline_rounded, color: Color(0xFF8A5700)),
+                        SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            'Podés ver los premios, pero para canjearlos primero tenés que verificar tu identidad en una estación Ruta GEN.',
+                            style: TextStyle(
+                              color: Color(0xFF755A2B),
+                              fontSize: 12.5,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(

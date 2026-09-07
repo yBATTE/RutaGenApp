@@ -198,32 +198,153 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
     );
   }
 
-  Movement _movementFromRedemption(Map<String, dynamic> data) {
-    final stationName = _stringValue(
-      data['stationName'],
-      fallback: _stringValue(
-        data['stationSlug'],
-        fallback: 'Estación Grupo Gen',
-      ),
-    );
+  Movement _movementFromRewardActivity(Map<String, dynamic> data) {
+    final kind = _stringValue(
+      data['redemptionKind'] ?? data['type'],
+    ).toUpperCase();
+    final source = _stringValue(data['source']).toUpperCase();
     final rewardName = _stringValue(
       data['rewardName'],
       fallback: 'Premio',
     );
+    final stationName = _stringValue(data['stationName']);
+    final campaign = _asMap(data['campaign']);
+    final campaignName = _stringValue(campaign['name']);
+    final status = _stringValue(data['status']).toUpperCase();
+    final date = _dateValue(
+      data['createdAt'] ?? data['issuedAt'] ?? data['redeemedAt'],
+    );
+
+    if (kind == 'GIFT' || kind == 'GIFT_REWARD') {
+      final visitBonus = source == 'VISIT_BONUS';
+      final title = visitBonus
+          ? 'Beneficio por visitas'
+          : source == 'WELCOME'
+              ? 'Premio de bienvenida'
+              : 'Premio regalado';
+      final statusText = switch (status) {
+        'AVAILABLE' => 'Disponible para canjear',
+        'REDEEMED' => 'Canjeado',
+        'EXPIRED' => 'Vencido',
+        'CANCELLED' => 'Cancelado',
+        _ => '',
+      };
+      final details = <String>[
+        rewardName,
+        if (campaignName.isNotEmpty) campaignName,
+        if (stationName.isNotEmpty) stationName,
+        if (statusText.isNotEmpty) statusText,
+      ];
+
+      return Movement(
+        id: _stringValue(data['id'] ?? data['_id']),
+        title: title,
+        subtitle: details.join('\n'),
+        date: date,
+        points: 0,
+        type: visitBonus ? MovementType.visitBonus : MovementType.gift,
+        stationName: stationName.isEmpty ? null : stationName,
+        productName: rewardName,
+      );
+    }
+
     final pointsCost = _intValue(
       data['pointsCost'] ?? data['points'],
     ).abs();
-    final date = _dateValue(data['createdAt']);
+    final fallbackStation = stationName.isEmpty
+        ? _stringValue(
+            data['stationSlug'],
+            fallback: 'Estación Grupo Gen',
+          )
+        : stationName;
 
     return Movement(
       id: _stringValue(data['id'] ?? data['_id']),
-      title: 'Canje de premio',
-      subtitle: '$stationName\n$rewardName',
+      title: 'Canje por puntos',
+      subtitle: '$fallbackStation\n$rewardName',
       date: date,
       points: -pointsCost,
       type: MovementType.redemption,
-      stationName: stationName,
+      stationName: fallbackStation,
       productName: rewardName,
+    );
+  }
+
+  GiftReward _giftRewardFromData(Map<String, dynamic> data) {
+    final reward = _asMap(data['reward']);
+    final campaign = _asMap(data['campaign']);
+
+    return GiftReward(
+      id: _stringValue(data['id'] ?? data['_id']),
+      giftCode: _stringValue(data['giftCode']),
+      qrToken: _stringValue(data['qrToken']).isEmpty
+          ? null
+          : _stringValue(data['qrToken']),
+      source: _stringValue(data['source'], fallback: 'SYSTEM'),
+      status: _stringValue(data['status'], fallback: 'AVAILABLE'),
+      rewardName: _stringValue(reward['name'], fallback: 'Premio Ruta Gen'),
+      rewardDescription: _stringValue(reward['description']),
+      rewardImageUrl: _rewardImageUrl(reward['imagePath']),
+      campaignName: _stringValue(campaign['name']).isEmpty
+          ? null
+          : _stringValue(campaign['name']),
+      reservationStationName: _stringValue(data['reservationStationName']).isEmpty
+          ? null
+          : _stringValue(data['reservationStationName']),
+      issuedAt: _dateValue(data['issuedAt'] ?? data['createdAt']),
+      expiresAt: _nullableDateValue(data['expiresAt']),
+      redeemedAt: _nullableDateValue(data['redeemedAt']),
+      redeemedStationName: _stringValue(data['redeemedStationName']).isEmpty
+          ? null
+          : _stringValue(data['redeemedStationName']),
+    );
+  }
+
+  VisitProgress _visitProgressFromData(Map<String, dynamic> data) {
+    final settings = _asMap(data['settings']);
+    final secondSetting = _asMap(settings['secondStation']);
+    final thirdSetting = _asMap(settings['thirdStation']);
+    final secondReward = _asMap(secondSetting['reward']);
+    final thirdReward = _asMap(thirdSetting['reward']);
+    final milestones = _asMap(data['milestones']);
+    final secondMilestone = _asMap(milestones['secondStation']);
+    final thirdMilestone = _asMap(milestones['thirdStation']);
+    final rawStations = data['visitedStations'];
+
+    final visitedStations = rawStations is List
+        ? rawStations
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .map(
+              (item) => VisitStation(
+                slug: _stringValue(item['slug']),
+                name: _stringValue(item['name'], fallback: _stringValue(item['slug'])),
+              ),
+            )
+            .toList()
+        : const <VisitStation>[];
+
+    return VisitProgress(
+      monthKey: _stringValue(data['monthKey']),
+      visitedStations: visitedStations,
+      stationCount: _intValue(data['stationCount']),
+      enabled: settings['enabled'] == true,
+      secondStationStatus: _stringValue(
+        secondMilestone['status'],
+        fallback: 'WAITING',
+      ),
+      thirdStationStatus: _stringValue(
+        thirdMilestone['status'],
+        fallback: 'WAITING',
+      ),
+      remainingForBreakfast: _intValue(data['remainingForBreakfast']),
+      remainingForMeal: _intValue(data['remainingForMeal']),
+      secondStationRewardName: _stringValue(secondReward['name']).isEmpty
+          ? null
+          : _stringValue(secondReward['name']),
+      thirdStationRewardName: _stringValue(thirdReward['name']).isEmpty
+          ? null
+          : _stringValue(thirdReward['name']),
     );
   }
 
@@ -337,7 +458,7 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
             ),
           ),
       ..._extractList(responses[1]).whereType<Map>().map(
-            (item) => _movementFromRedemption(
+            (item) => _movementFromRewardActivity(
               Map<String, dynamic>.from(item),
             ),
           ),
@@ -350,6 +471,35 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
     final end =
         requestedEnd > movements.length ? movements.length : requestedEnd;
     return movements.sublist(start, end);
+  }
+
+  @override
+  Future<List<GiftReward>> getGiftRewards({
+    String? status,
+  }) async {
+    final response = await _apiClient.get(
+      '/rewards/gifts/me',
+      queryParameters: {
+        'limit': '100',
+        if (status != null && status.trim().isNotEmpty)
+          'status': status.trim().toUpperCase(),
+      },
+    );
+    final data = _asMap(response['data']);
+    final rawItems = data['items'];
+
+    if (rawItems is! List) return const [];
+
+    return rawItems
+        .whereType<Map>()
+        .map((item) => _giftRewardFromData(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  @override
+  Future<VisitProgress> getVisitProgress() async {
+    final response = await _apiClient.get('/rewards/visit-progress');
+    return _visitProgressFromData(_asMap(response['data']));
   }
 
   @override

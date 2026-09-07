@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "27331798126",
+    "project_id": "ruta-gen",
+    "storage_bucket": "ruta-gen.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:27331798126:android:c35552062df568fcb0f27f",
+        "android_client_info": {
+          "package_name": "com.grupogen.ruta_gen_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3Tx1luG14Z9WpdkuSzR_G_ei9huJJZp0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

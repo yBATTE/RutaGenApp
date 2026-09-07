@@ -5,9 +5,12 @@ import '../../data/ruta_gen_repository.dart';
 import '../../models/user_model.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_notification_service.dart';
 import '../account/account_page.dart';
+import '../gifts/gift_rewards_page.dart';
 import '../home/home_page.dart';
 import '../movements/movements_page.dart';
+import '../notifications/notifications_page.dart';
 import '../qr/my_qr_page.dart';
 import '../rewards/rewards_page.dart';
 import '../stations/stations_page.dart';
@@ -38,6 +41,20 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _currentUser = widget.user;
+
+    PushNotificationService.instance.actionNotifier
+        .addListener(_handlePushAction);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handlePushAction();
+    });
+  }
+
+  @override
+  void dispose() {
+    PushNotificationService.instance.actionNotifier
+        .removeListener(_handlePushAction);
+    super.dispose();
   }
 
   @override
@@ -125,6 +142,20 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _goTo(int index) {
+    if (index == 2 && !_currentUser.identityVerified) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Primero tenés que verificar tu cuenta presentando el DNI en una estación Ruta GEN.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    }
+
     if (_index != index) {
       setState(() {
         _index = index;
@@ -152,6 +183,62 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const NotificationsPage(),
+      ),
+    );
+  }
+
+  void _openGiftRewards() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GiftRewardsPage(
+          repository: widget.repository,
+        ),
+      ),
+    );
+  }
+
+  void _handlePushAction() {
+    if (!mounted) return;
+
+    final action = PushNotificationService.instance
+        .consumePendingAction();
+    if (action == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      switch (action) {
+        case 'HOME':
+          _goTo(0);
+          break;
+        case 'REWARDS':
+          _goTo(3);
+          break;
+        case 'GIFT_REWARDS':
+        case 'GIFTS':
+          _openGiftRewards();
+          break;
+        case 'STATIONS':
+          _goTo(1);
+          break;
+        case 'MOVEMENTS':
+          _openMovements();
+          break;
+        case 'QR':
+          _goTo(2);
+          break;
+        case 'NOTIFICATIONS':
+        default:
+          _openNotifications();
+          break;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
@@ -160,6 +247,8 @@ class _AppShellState extends State<AppShell> {
         user: _currentUser,
         onNavigate: _goTo,
         onRefreshUser: _refreshCurrentUser,
+        onOpenNotifications: _openNotifications,
+        onOpenGiftRewards: _openGiftRewards,
       ),
       StationsPage(
         repository: widget.repository,
@@ -174,6 +263,8 @@ class _AppShellState extends State<AppShell> {
         isActive: _index == 3,
         onRefreshUser: _refreshCurrentUser,
         onShowQr: () => _goTo(2),
+        identityVerified: _currentUser.identityVerified,
+        onOpenGiftRewards: _openGiftRewards,
       ),
       AccountPage(
         user: _currentUser,

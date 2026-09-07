@@ -5,6 +5,12 @@ abstract interface class RutaGenRepository {
 
   Future<List<Reward>> getRewards();
 
+  Future<List<GiftReward>> getGiftRewards({
+    String? status,
+  });
+
+  Future<VisitProgress> getVisitProgress();
+
   Future<List<Movement>> getMovements({
     int page = 1,
     int limit = 20,

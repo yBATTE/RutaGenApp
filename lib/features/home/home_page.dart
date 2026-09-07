@@ -5,7 +5,9 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
 import '../../data/ruta_gen_repository.dart';
 import '../../models/user_model.dart';
+import '../../shared/widgets/identity_verification_banner.dart';
 import '../../shared/widgets/ruta_gen_logo.dart';
+import '../../shared/widgets/visit_progress_card.dart';
 import '../../shared/widgets/section_title.dart';
 import '../movements/movements_page.dart';
 import '../news/news_detail_page.dart';
@@ -17,12 +19,16 @@ class HomePage extends StatefulWidget {
     required this.user,
     required this.onNavigate,
     required this.onRefreshUser,
+    required this.onOpenNotifications,
+    required this.onOpenGiftRewards,
   });
 
   final RutaGenRepository repository;
   final UserModel user;
   final ValueChanged<int> onNavigate;
   final Future<void> Function() onRefreshUser;
+  final VoidCallback onOpenNotifications;
+  final VoidCallback onOpenGiftRewards;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -31,6 +37,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late Future<List<Movement>> _movements;
   late Future<List<NewsItem>> _news;
+  late Future<VisitProgress> _visitProgress;
 
   @override
   void initState() {
@@ -38,6 +45,7 @@ class _HomePageState extends State<HomePage> {
 
     _movements = widget.repository.getMovements();
     _news = widget.repository.getNews(limit: 5);
+    _visitProgress = widget.repository.getVisitProgress();
   }
 
   Future<void> _refresh() async {
@@ -47,14 +55,19 @@ class _HomePageState extends State<HomePage> {
     final news =
         widget.repository.getNews(limit: 5);
 
+    final visitProgress =
+        widget.repository.getVisitProgress();
+
     setState(() {
       _movements = movements;
       _news = news;
+      _visitProgress = visitProgress;
     });
 
     await Future.wait<Object?>([
       movements,
       news,
+      visitProgress,
       widget.onRefreshUser(),
     ]);
   }
@@ -112,15 +125,25 @@ class _HomePageState extends State<HomePage> {
           physics:
               const AlwaysScrollableScrollPhysics(),
           slivers: [
-            const SliverAppBar(
+            SliverAppBar(
               pinned: true,
               expandedHeight: 118,
               backgroundColor: AppColors.navy,
               foregroundColor: Colors.white,
-              title: RutaGenLogo(
+              title: const RutaGenLogo(
                 compact: true,
               ),
-              flexibleSpace: FlexibleSpaceBar(
+              actions: [
+                IconButton(
+                  onPressed: widget.onOpenNotifications,
+                  tooltip: 'Notificaciones',
+                  icon: const Icon(
+                    Icons.notifications_outlined,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              flexibleSpace: const FlexibleSpaceBar(
                 background: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -163,6 +186,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (!widget.user.identityVerified) ...[
+                    IdentityVerificationBanner(
+                      onViewStations: () => widget.onNavigate(1),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   _PointsCard(
                     user: widget.user,
                     formattedPoints:
@@ -208,6 +237,27 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 22),
+                  if (widget.user.identityVerified)
+                    FutureBuilder<VisitProgress>(
+                      future: _visitProgress,
+                      builder: (context, snapshot) {
+                        final progress = snapshot.data;
+                        if (progress == null || !progress.enabled) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: VisitProgressCard(
+                            progress: progress,
+                            onOpenGifts: widget.onOpenGiftRewards,
+                          ),
+                        );
+                      },
+                    ),
+                  _GiftShortcut(
+                    onTap: widget.onOpenGiftRewards,
                   ),
                   const SizedBox(height: 26),
                   SectionTitle(
@@ -546,6 +596,58 @@ class _PointsCard extends StatelessWidget {
   }
 }
 
+class _GiftShortcut extends StatelessWidget {
+  const _GiftShortcut({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 17, vertical: 15),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Color(0xFFEAF4FF),
+                foregroundColor: AppColors.blue,
+                child: Icon(Icons.auto_awesome_rounded),
+              ),
+              SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mis premios regalados',
+                      style: TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Sorpresas, sorteos y beneficios por visitar estaciones.',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LatestMovementCard
     extends StatelessWidget {
   const _LatestMovementCard({
@@ -572,8 +674,8 @@ class _LatestMovementCard
     final item =
         movement.productName?.trim();
 
-    if (movement.type ==
-        MovementType.redemption) {
+    if (movement.type == MovementType.redemption ||
+        movement.isGift) {
       return [
         if (station != null &&
             station.isNotEmpty)
@@ -600,7 +702,8 @@ class _LatestMovementCard
 
   @override
   Widget build(BuildContext context) {
-    final positive = movement.points >= 0;
+    final isGift = movement.isGift;
+    final positive = movement.points > 0;
 
     return Card(
       child: InkWell(
@@ -613,19 +716,22 @@ class _LatestMovementCard
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundColor: positive
-                    ? const Color(0xFFE8F3FF)
-                    : const Color(0xFFFFEEE8),
-                foregroundColor: positive
-                    ? AppColors.blue
-                    : AppColors.danger,
+                backgroundColor: isGift
+                    ? const Color(0xFFEFF4FF)
+                    : positive
+                        ? const Color(0xFFE8F3FF)
+                        : const Color(0xFFFFEEE8),
+                foregroundColor: isGift
+                    ? const Color(0xFF6558D3)
+                    : positive
+                        ? AppColors.blue
+                        : AppColors.danger,
                 child: Icon(
-                  movement.type ==
-                          MovementType.load
-                      ? Icons
-                          .local_gas_station_rounded
-                      : Icons
-                          .card_giftcard_rounded,
+                  movement.type == MovementType.load
+                      ? Icons.local_gas_station_rounded
+                      : movement.type == MovementType.visitBonus
+                          ? Icons.route_rounded
+                          : Icons.card_giftcard_rounded,
                 ),
               ),
               const SizedBox(width: 14),
@@ -660,14 +766,17 @@ class _LatestMovementCard
               ),
               const SizedBox(width: 10),
               Text(
-                '${positive ? '+' : '-'}${movement.points.abs()}',
+                isGift
+                    ? '0 pts'
+                    : '${positive ? '+' : '-'}${movement.points.abs()}',
                 style: TextStyle(
-                  color: positive
-                      ? AppColors.success
-                      : AppColors.danger,
-                  fontSize: 21,
-                  fontWeight:
-                      FontWeight.w900,
+                  color: isGift
+                      ? const Color(0xFF6558D3)
+                      : positive
+                          ? AppColors.success
+                          : AppColors.danger,
+                  fontSize: isGift ? 14 : 21,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],

@@ -7,11 +7,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 
 class ApiException implements Exception {
-  const ApiException({
-    required this.message,
-    this.statusCode,
-    this.details,
-  });
+  const ApiException({required this.message, this.statusCode, this.details});
 
   final String message;
   final int? statusCode;
@@ -27,7 +23,11 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient._();
+  ApiClient._() : _httpClient = http.Client();
+
+  // Permite verificar el mismo flujo sin realizar peticiones a producción.
+  ApiClient.forTesting({required http.Client httpClient})
+    : _httpClient = httpClient;
 
   static final ApiClient instance = ApiClient._();
 
@@ -35,12 +35,10 @@ class ApiClient {
   static const String _legacyQrTokenKey = 'qr_token';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
-  final http.Client _httpClient = http.Client();
+  final http.Client _httpClient;
 
   Future<Map<String, dynamic>> get(
     String path, {
@@ -173,15 +171,14 @@ class ApiClient {
               .timeout(ApiConfig.timeout);
           break;
         default:
-          throw ApiException(
-            message: 'Método HTTP no compatible: $method.',
-          );
+          throw ApiException(message: 'Método HTTP no compatible: $method.');
       }
 
       return _processResponse(response);
     } on TimeoutException {
       throw const ApiException(
-        message: 'El servidor tardó demasiado en responder. Verificá la conexión.',
+        message:
+            'El servidor tardó demasiado en responder. Verificá la conexión.',
       );
     } on http.ClientException {
       throw const ApiException(
@@ -194,10 +191,7 @@ class ApiClient {
     }
   }
 
-  Uri _buildUri(
-    String path, {
-    Map<String, String>? queryParameters,
-  }) {
+  Uri _buildUri(String path, {Map<String, String>? queryParameters}) {
     final normalizedPath = path.startsWith('/') ? path : '/$path';
     final uri = Uri.parse('${ApiConfig.baseUrl}$normalizedPath');
 
@@ -267,10 +261,7 @@ class ApiClient {
   }
 
   Future<void> saveAccessToken(String accessToken) async {
-    await _storage.write(
-      key: _accessTokenKey,
-      value: accessToken,
-    );
+    await _storage.write(key: _accessTokenKey, value: accessToken);
   }
 
   Future<String?> getAccessToken() {
