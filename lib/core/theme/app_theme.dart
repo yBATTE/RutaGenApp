@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 
 abstract final class AppTheme {
+  // Keep status icons readable even when Android uses edge-to-edge rendering.
+  static const lightBackgroundOverlay = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+  );
+
+  static const darkBackgroundOverlay = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+  );
+
   static ThemeData get light {
     final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.blue,
@@ -17,6 +31,7 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: const Color(0xFFF8FAFD),
       fontFamily: 'Roboto',
       appBarTheme: const AppBarTheme(
+        systemOverlayStyle: lightBackgroundOverlay,
         backgroundColor: Colors.transparent,
         foregroundColor: AppColors.ink,
         elevation: 0,

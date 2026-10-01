@@ -33,6 +33,32 @@ Future<void> register(AuthService auth) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+  test('alta sin DNI omite el campo y accede con correo normalizado', () async {
+    final userWithoutDni = {...customer}..remove('dni');
+    final api = ApiClient.forTesting(
+      httpClient: MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        if (request.url.path.endsWith('/register')) {
+          expect(body.containsKey('dni'), false);
+          expect(body['email'], 'prueba@example.com');
+          return payload({'user': userWithoutDni}, 201);
+        }
+        expect(body['identifier'], 'prueba@example.com');
+        return payload({'user': userWithoutDni, 'accessToken': 'session-test'});
+      }),
+    );
+    final user = await AuthService.forTesting(apiClient: api).register(
+      firstName: 'Prueba',
+      lastName: 'Registro',
+      email: ' Prueba@Example.com ',
+      password: 'Prueba1234',
+      acceptedTerms: true,
+    );
+    expect(user.dni, '');
+    expect(user.identityVerified, false);
+    expect(await api.getAccessToken(), 'session-test');
+  });
+
   test(
     'alta sin qrToken inicia login y guarda token, identidad sigue pendiente',
     () async {

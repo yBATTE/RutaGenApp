@@ -5,6 +5,44 @@ enum MovementType {
   redemption,
   gift,
   visitBonus,
+  adjustment,
+}
+
+class RankingEntry {
+  const RankingEntry({required this.position, required this.name, required this.points, required this.isMe, this.liters = 0});
+  final int position;
+  final String name;
+  final int points;
+  final double liters;
+  final bool isMe;
+}
+
+class DrawEvent {
+  const DrawEvent({required this.id, required this.title, required this.prizeName,
+    required this.status, required this.startAt, required this.endAt, required this.drawAt,
+    this.description = '', this.rules = '', this.conditions = '', this.qualifyingCount = 20,
+    this.imageUrls = const [], this.winnerName, this.metric = 'POINTS'});
+  final String id, title, prizeName, status, description, rules, conditions, metric;
+  final int qualifyingCount;
+  final DateTime? startAt, endAt, drawAt;
+  final List<String> imageUrls;
+  final String? winnerName;
+}
+
+class MonthlyRanking {
+  const MonthlyRanking({required this.month, required this.top, required this.position, required this.points, required this.eligible,
+    this.configured = true, this.status = 'OPEN', this.prizeName = '', this.cycleStart, this.cycleEnd, this.liters = 0});
+  final String month;
+  final bool configured;
+  final String status;
+  final String prizeName;
+  final DateTime? cycleStart;
+  final DateTime? cycleEnd;
+  final List<RankingEntry> top;
+  final int? position;
+  final int points;
+  final double liters;
+  final bool eligible;
 }
 
 class Customer {
@@ -48,6 +86,7 @@ class Reward {
     required this.stock,
     required this.icon,
     this.imageUrl,
+    this.imageUrls = const [],
   });
 
   final String id;
@@ -57,6 +96,11 @@ class Reward {
   final int stock;
   final IconData icon;
   final String? imageUrl;
+  final List<String> imageUrls;
+
+  List<String> get gallery => imageUrls.isNotEmpty
+      ? imageUrls
+      : imageUrl == null || imageUrl!.isEmpty ? const [] : [imageUrl!];
 
   bool get hasStock => stock > 0;
 }
@@ -206,6 +250,10 @@ class Movement {
   final double? liters;
   final double? amount;
   final double? pricePerLiter;
+
+  // Componentes de fecha/hora para mostrar en Argentina. La fecha original
+  // conserva el instante real para ordenar los movimientos.
+  DateTime get argentinaDate => date.toUtc().subtract(const Duration(hours: 3));
 
   bool get isGift =>
       type == MovementType.gift || type == MovementType.visitBonus;

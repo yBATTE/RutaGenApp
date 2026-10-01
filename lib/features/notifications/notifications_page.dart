@@ -47,7 +47,9 @@ class AppNotification {
 }
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key});
+  const NotificationsPage({super.key, this.onUnreadChanged});
+
+  final VoidCallback? onUnreadChanged;
 
   @override
   State<NotificationsPage> createState() =>
@@ -57,6 +59,8 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   final ApiClient _apiClient = ApiClient.instance;
   late Future<List<AppNotification>> _future;
+  List<AppNotification> _visibleItems = const [];
+  bool _closing = false;
 
   @override
   void initState() {
@@ -78,9 +82,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
         : <String, dynamic>{};
     final items = payload['items'];
 
-    if (items is! List) return [];
+    if (items is! List) {
+      _visibleItems = const [];
+      return [];
+    }
 
-    return items
+    final loaded = items
         .whereType<Map>()
         .map(
           (item) => AppNotification.fromJson(
@@ -88,6 +95,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
           ),
         )
         .toList();
+    _visibleItems = loaded;
+    return loaded;
   }
 
   Future<void> _refresh() async {
@@ -99,25 +108,46 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _open(AppNotification item) async {
-    if (!item.read) {
-      try {
-        await _apiClient.patch(
-          '/notifications/${item.id}/read',
-        );
-      } catch (_) {
-        // El aviso puede abrirse aunque falle la confirmación de lectura.
+    if (item.action == 'NOTIFICATIONS') {
+      await _close();
+    } else {
+      await _close(action: item.action);
+    }
+  }
+
+  Future<void> _close({String? action}) async {
+    if (_closing) return;
+    _closing = true;
+
+    // Si el usuario vuelve enseguida, esperar a saber qué avisos vio.
+    try {
+      await _future;
+    } catch (_) {}
+
+    final unreadIds = _visibleItems
+        .where((item) => !item.read && item.id.isNotEmpty)
+        .map((item) => item.id)
+        .toSet();
+
+    // Se confirma cada lectura con el endpoint existente antes de salir.
+    // Si alguna falla, seguirá figurando como pendiente al volver a cargar.
+    if (unreadIds.isNotEmpty) {
+      final ids = unreadIds.toList();
+      for (var start = 0; start < ids.length; start += 4) {
+        await Future.wait(ids.skip(start).take(4).map((id) async {
+          try {
+            await _apiClient.patch('/notifications/$id/read');
+          } catch (_) {}
+        }));
       }
     }
 
+    widget.onUnreadChanged?.call();
     if (!mounted) return;
-
-    if (item.action == 'NOTIFICATIONS') {
-      await _refresh();
-      return;
-    }
-
     Navigator.of(context).pop();
-    PushNotificationService.instance.openAction(item.action);
+    if (action != null) {
+      PushNotificationService.instance.openAction(action);
+    }
   }
 
   String _date(DateTime value) {
@@ -135,7 +165,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _close();
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: const Text(
@@ -297,6 +332,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             );
           },
         ),
+      ),
       ),
     );
   }

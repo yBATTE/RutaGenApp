@@ -1,6 +1,10 @@
+import 'points_promotion.dart';
 import 'models.dart';
 
 abstract interface class RutaGenRepository {
+  Future<List<DrawEvent>> getDrawEvents();
+  Future<MonthlyRanking> getDrawEventRanking(String id);
+  Future<MonthlyRanking> getMonthlyRanking({String type = 'BIKE'});
   Future<Customer> getCustomer();
 
   Future<List<Reward>> getRewards();
@@ -34,4 +38,9 @@ abstract interface class TemporaryQrRepository {
   Future<TemporaryQr> getCurrentQr();
 
   Future<TemporaryQr> renewQr();
+}
+
+/// Optional capability keeps older/demo repositories compatible.
+abstract interface class PointsPromotionRepository {
+  Future<PointsPromotion?> getPointsPromotion();
 }

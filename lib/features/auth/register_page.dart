@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
@@ -88,7 +89,10 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final UserModel user;
       if (_accountCreated) {
-        user = await _auth.login(identifier: dni, password: password);
+        user = await _auth.login(
+          identifier: dni.isNotEmpty ? dni : _emailController.text.trim(),
+          password: password,
+        );
       } else {
         user = await _auth.register(
           firstName: _firstNameController.text.trim(),
@@ -154,6 +158,7 @@ class _RegisterPageState extends State<RegisterPage> {
       child: Scaffold(
         backgroundColor: AppColors.navy,
         appBar: AppBar(
+          systemOverlayStyle: AppTheme.darkBackgroundOverlay,
           foregroundColor: Colors.white,
           leading: IconButton(
             onPressed: _loading ? null : _goBackStep,
@@ -239,7 +244,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           _RegisterField(
                             controller: _dniController,
                             icon: Icons.badge_outlined,
-                            hint: 'DNI',
+                            hint: 'DNI (opcional)',
                             enabled: !_loading,
                             keyboardType: TextInputType.number,
                             textInputAction: TextInputAction.next,
@@ -247,7 +252,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               final dni = value?.trim() ?? '';
 
                               if (dni.isEmpty) {
-                                return 'Ingresá tu DNI.';
+                                return null;
                               }
 
                               if (!RegExp(r'^\d{6,12}$').hasMatch(dni)) {

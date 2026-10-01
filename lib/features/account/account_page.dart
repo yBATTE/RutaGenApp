@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/user_model.dart';
 import 'edit_profile_page.dart';
+import 'delete_account_page.dart';
 import 'security_page.dart';
 import 'terms_page.dart';
 
@@ -12,19 +13,18 @@ class AccountPage extends StatelessWidget {
     required this.user,
     required this.onUserUpdated,
     required this.onLogout,
+    required this.onAccountDeleted,
   });
 
   final UserModel user;
-  final ValueChanged<UserModel>
-      onUserUpdated;
+  final ValueChanged<UserModel> onUserUpdated;
   final VoidCallback onLogout;
+  final VoidCallback onAccountDeleted;
 
   Future<void> _openEditProfile(
     BuildContext context,
   ) async {
-    final updatedUser =
-        await Navigator.of(context)
-            .push<UserModel>(
+    final updatedUser = await Navigator.of(context).push<UserModel>(
       MaterialPageRoute(
         builder: (_) => EditProfilePage(
           user: user,
@@ -55,21 +55,24 @@ class AccountPage extends StatelessWidget {
     return Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TermsPage(
-          acceptedTermsAt:
-              user.acceptedTermsAt,
+          acceptedTermsAt: user.acceptedTermsAt,
         ),
       ),
     );
   }
 
+  Future<void> _openAccountDeletion(BuildContext context) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DeleteAccountPage(onAccountDeleted: onAccountDeleted),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final phone =
-        user.phone?.trim() ?? '';
+    final phone = user.phone?.trim() ?? '';
 
     return Scaffold(
-      backgroundColor:
-          const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: const Text(
           'Mi cuenta',
@@ -79,8 +82,7 @@ class AccountPage extends StatelessWidget {
         ),
       ),
       body: ListView(
-        padding:
-            const EdgeInsets.fromLTRB(
+        padding: const EdgeInsets.fromLTRB(
           18,
           10,
           18,
@@ -99,10 +101,9 @@ class AccountPage extends StatelessWidget {
             child: Column(
               children: [
                 _InformationTile(
-                  icon:
-                      Icons.badge_outlined,
+                  icon: Icons.badge_outlined,
                   title: 'DNI',
-                  value: user.dni,
+                  value: user.dni.trim().isEmpty ? 'Pendiente de completar' : user.dni,
                 ),
                 const Divider(height: 1),
                 _InformationTile(
@@ -115,24 +116,17 @@ class AccountPage extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 _InformationTile(
-                  icon:
-                      Icons.email_outlined,
-                  title:
-                      'Correo electrónico',
+                  icon: Icons.email_outlined,
+                  title: 'Correo electrónico',
                   value: user.email,
-                  verified:
-                      user.emailVerified,
+                  verified: user.emailVerified,
                 ),
                 const Divider(height: 1),
                 _InformationTile(
-                  icon:
-                      Icons.phone_outlined,
+                  icon: Icons.phone_outlined,
                   title: 'Teléfono',
-                  value: phone.isEmpty
-                      ? 'No informado'
-                      : phone,
-                  verified:
-                      user.phoneVerified,
+                  value: phone.isEmpty ? 'No informado' : phone,
+                  verified: user.phoneVerified,
                 ),
               ],
             ),
@@ -143,59 +137,62 @@ class AccountPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _AccountOption(
-            icon:
-                Icons.person_outline_rounded,
+            icon: Icons.person_outline_rounded,
             title: 'Mis datos',
-            subtitle:
-                'Consultá y editá tu teléfono',
+            subtitle: 'Consultá y editá tu teléfono',
             onTap: () {
               _openEditProfile(context);
             },
           ),
           _AccountOption(
-            icon:
-                Icons.lock_outline_rounded,
-            title:
-                'Seguridad y biometría',
-            subtitle:
-                'Contraseña, huella y Face ID',
+            icon: Icons.lock_outline_rounded,
+            title: 'Seguridad y biometría',
+            subtitle: 'Contraseña, huella y Face ID',
             onTap: () {
               _openSecurity(context);
             },
           ),
           _AccountOption(
-            icon:
-                Icons.description_outlined,
-            title:
-                'Términos y condiciones',
-            subtitle:
-                'Condiciones de uso de Ruta Gen',
+            icon: Icons.description_outlined,
+            title: 'Términos y condiciones',
+            subtitle: 'Condiciones de uso de Ruta Gen',
             onTap: () {
               _openTerms(context);
             },
           ),
+          const SizedBox(height: 20),
+          const _SectionTitle(title: 'Cuenta'),
+          const SizedBox(height: 10),
+          Card(
+            color: const Color(0xFFFFF1F0),
+            child: ListTile(
+              leading: const Icon(Icons.delete_outline_rounded,
+                  color: Color(0xFFB42318)),
+              title: const Text('Eliminar cuenta',
+                  style: TextStyle(
+                      color: Color(0xFFB42318), fontWeight: FontWeight.w700)),
+              subtitle:
+                  const Text('Eliminar definitivamente tu cuenta y tus datos'),
+              trailing:
+                  const Icon(Icons.chevron_right, color: Color(0xFFB42318)),
+              onTap: () => _openAccountDeletion(context),
+            ),
+          ),
           const SizedBox(height: 22),
           OutlinedButton.icon(
-            onPressed: () =>
-                _confirmLogout(context),
+            onPressed: () => _confirmLogout(context),
             icon: const Icon(
               Icons.logout_rounded,
             ),
-            label:
-                const Text('Cerrar sesión'),
-            style:
-                OutlinedButton.styleFrom(
-              minimumSize:
-                  const Size.fromHeight(54),
-              foregroundColor:
-                  AppColors.blue,
+            label: const Text('Cerrar sesión'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(54),
+              foregroundColor: AppColors.blue,
               side: const BorderSide(
                 color: AppColors.blue,
               ),
-              shape:
-                  RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
                   14,
                 ),
               ),
@@ -219,29 +216,24 @@ class AccountPage extends StatelessWidget {
   Future<void> _confirmLogout(
     BuildContext context,
   ) async {
-    final confirmed =
-        await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title:
-              const Text('Cerrar sesión'),
+          title: const Text('Cerrar sesión'),
           content: const Text(
             '¿Querés cerrar tu sesión en este dispositivo?',
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(dialogContext)
-                    .pop(false);
+                Navigator.of(dialogContext).pop(false);
               },
-              child:
-                  const Text('Cancelar'),
+              child: const Text('Cancelar'),
             ),
             FilledButton(
               onPressed: () {
-                Navigator.of(dialogContext)
-                    .pop(true);
+                Navigator.of(dialogContext).pop(true);
               },
               child: const Text(
                 'Cerrar sesión',
@@ -267,16 +259,14 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final memberCode =
-        user.memberCode?.trim();
+    final memberCode = user.memberCode?.trim();
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
-        decoration:
-            const BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -290,67 +280,52 @@ class _ProfileCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 38,
-              backgroundColor:
-                  Colors.white,
-              foregroundColor:
-                  AppColors.navy,
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.navy,
               child: Text(
-                user.initials.isEmpty
-                    ? 'RG'
-                    : user.initials,
+                user.initials.isEmpty ? 'RG' : user.initials,
                 style: const TextStyle(
                   fontSize: 24,
-                  fontWeight:
-                      FontWeight.w900,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     user.fullName,
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
-                      fontWeight:
-                          FontWeight.w900,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    memberCode != null &&
-                            memberCode
-                                .isNotEmpty
+                    memberCode != null && memberCode.isNotEmpty
                         ? 'Socio $memberCode'
-                        : 'DNI ${user.dni}',
-                    style:
-                        const TextStyle(
+                        : user.dni.trim().isNotEmpty
+                            ? 'DNI ${user.dni}'
+                            : 'Identidad pendiente de verificación',
+                    style: const TextStyle(
                       color: AppColors.cyan,
-                      fontWeight:
-                          FontWeight.w700,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 9),
                   Container(
-                    padding:
-                        const EdgeInsets
-                            .symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 5,
                     ),
-                    decoration:
-                        BoxDecoration(
-                      color: Colors.white
-                          .withValues(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(
                         alpha: 0.14,
                       ),
-                      borderRadius:
-                          BorderRadius.circular(
+                      borderRadius: BorderRadius.circular(
                         20,
                       ),
                     ),
@@ -375,8 +350,7 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _PointsSummary
-    extends StatelessWidget {
+class _PointsSummary extends StatelessWidget {
   const _PointsSummary({
     required this.user,
   });
@@ -389,12 +363,10 @@ class _PointsSummary
       children: [
         Container(
           width: double.infinity,
-          padding:
-              const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: AppColors.blue,
-            borderRadius:
-                BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
             children: [
@@ -403,8 +375,7 @@ class _PointsSummary
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
-                  fontWeight:
-                      FontWeight.w800,
+                  fontWeight: FontWeight.w800,
                   letterSpacing: 0.7,
                 ),
               ),
@@ -416,16 +387,14 @@ class _PointsSummary
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 34,
-                  fontWeight:
-                      FontWeight.w900,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
               const Text(
                 'puntos',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontWeight:
-                      FontWeight.w600,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -436,11 +405,9 @@ class _PointsSummary
           children: [
             Expanded(
               child: _PointsItem(
-                icon: Icons
-                    .add_circle_outline_rounded,
+                icon: Icons.add_circle_outline_rounded,
                 label: 'Acumulados',
-                value: user
-                    .lifetimePointsEarned,
+                value: user.lifetimePointsEarned,
                 color: const Color(
                   0xFF16865A,
                 ),
@@ -449,11 +416,9 @@ class _PointsSummary
             const SizedBox(width: 10),
             Expanded(
               child: _PointsItem(
-                icon:
-                    Icons.redeem_rounded,
+                icon: Icons.redeem_rounded,
                 label: 'Canjeados',
-                value: user
-                    .lifetimePointsRedeemed,
+                value: user.lifetimePointsRedeemed,
                 color: AppColors.blue,
               ),
             ),
@@ -481,8 +446,7 @@ class _PointsItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding:
-            const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(15),
         child: Row(
           children: [
             Icon(
@@ -492,24 +456,19 @@ class _PointsItem extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _formatPoints(value),
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
                       fontSize: 17,
-                      fontWeight:
-                          FontWeight.w900,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                   Text(
                     label,
-                    style:
-                        const TextStyle(
-                      color:
-                          AppColors.muted,
+                    style: const TextStyle(
+                      color: AppColors.muted,
                       fontSize: 12,
                     ),
                   ),
@@ -523,8 +482,7 @@ class _PointsItem extends StatelessWidget {
   }
 }
 
-class _InformationTile
-    extends StatelessWidget {
+class _InformationTile extends StatelessWidget {
   const _InformationTile({
     required this.icon,
     required this.title,
@@ -540,8 +498,7 @@ class _InformationTile
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(
+      contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 5,
       ),
@@ -581,8 +538,7 @@ class _InformationTile
   }
 }
 
-class _AccountOption
-    extends StatelessWidget {
+class _AccountOption extends StatelessWidget {
   const _AccountOption({
     required this.icon,
     required this.title,
@@ -598,14 +554,12 @@ class _AccountOption
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          const EdgeInsets.only(
+      padding: const EdgeInsets.only(
         bottom: 10,
       ),
       child: Card(
         child: ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(
+          contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 6,
           ),
@@ -616,8 +570,7 @@ class _AccountOption
           title: Text(
             title,
             style: const TextStyle(
-              fontWeight:
-                  FontWeight.w700,
+              fontWeight: FontWeight.w700,
             ),
           ),
           subtitle: subtitle == null
@@ -625,8 +578,7 @@ class _AccountOption
               : Text(
                   subtitle!,
                   maxLines: 1,
-                  overflow:
-                      TextOverflow.ellipsis,
+                  overflow: TextOverflow.ellipsis,
                 ),
           trailing: const Icon(
             Icons.chevron_right_rounded,
@@ -638,8 +590,7 @@ class _AccountOption
   }
 }
 
-class _SectionTitle
-    extends StatelessWidget {
+class _SectionTitle extends StatelessWidget {
   const _SectionTitle({
     required this.title,
   });
@@ -660,8 +611,7 @@ class _SectionTitle
 }
 
 String _formatPoints(double value) {
-  if (value ==
-      value.roundToDouble()) {
+  if (value == value.roundToDouble()) {
     return value.toInt().toString();
   }
 

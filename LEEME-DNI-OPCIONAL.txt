@@ -1,0 +1,22 @@
+RUTA GEN - CORRECCION DNI OPCIONAL
+Aplicar sobre el proyecto enviado el 01/10/2026 a las 11:23.
+
+1. Descomprimir este ZIP y copiar su contenido sobre ruta_gen_app.
+2. Desde la carpeta del proyecto ejecutar:
+   flutter pub get
+   flutter analyze
+   flutter test test/auth_flow_test.dart test/register_navigation_test.dart
+   flutter run
+
+Detener y volver a ejecutar la app para usar el codigo actualizado.
+Probar una cuenta nueva con DNI vacio: debe permitir Continuar, crear la cuenta
+e ingresar con el correo. El DNI con contenido sigue validando 6 a 12 digitos.
+El DNI vacio no se envia al backend. El backend publicado debe aceptar su ausencia.
+La verificacion presencial permanece pendiente hasta realizarla en la estacion.
+
+Cambios: formulario, login posterior al alta y reintento por correo,
+biometria por correo cuando falta DNI, informacion personal sin DNI y pruebas.
+No incluye cambios de backend ni incrementa el numero de build.
+
+Validacion en este entorno: inspeccion de cambios y contenido del ZIP.
+No fue posible ejecutar flutter analyze ni flutter test porque no hay SDK Flutter.

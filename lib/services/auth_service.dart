@@ -4,16 +4,21 @@ import 'biometric_service.dart';
 
 // El alta ya fue confirmada: el siguiente intento debe ser login, no registro.
 class AccountCreatedException extends ApiException {
-  const AccountCreatedException({required super.message});
+  const AccountCreatedException({
+    required super.message,
+  });
 }
 
 class AuthService {
   AuthService._() : _apiClient = ApiClient.instance;
 
-  AuthService.forTesting({required ApiClient apiClient})
-    : _apiClient = apiClient;
+  AuthService.forTesting({
+    required ApiClient apiClient,
+  }) : _apiClient = apiClient;
 
   static final AuthService instance = AuthService._();
+
+  bool accountDeletionInProgress = false;
 
   final ApiClient _apiClient;
   final BiometricService _biometricService = BiometricService.instance;
@@ -25,7 +30,7 @@ class AuthService {
   Future<UserModel> register({
     required String firstName,
     required String lastName,
-    required String dni,
+    String dni = '',
     required String email,
     required String password,
     required bool acceptedTerms,
@@ -47,7 +52,7 @@ class AuthService {
       body: {
         'firstName': cleanFirstName,
         'lastName': cleanLastName,
-        'dni': cleanDni,
+        if (cleanDni.isNotEmpty) 'dni': cleanDni,
         'email': cleanEmail,
         'password': password,
         'acceptedTerms': acceptedTerms,
@@ -57,11 +62,13 @@ class AuthService {
     // El backend devuelve { data: { user } }. El QR temporal se obtiene
     // desde su endpoint autenticado, no es un requisito para entrar a la app.
     try {
-      return await login(identifier: cleanDni, password: password);
+      return await login(
+        identifier: cleanDni.isNotEmpty ? cleanDni : cleanEmail,
+        password: password,
+      );
     } catch (_) {
       throw const AccountCreatedException(
-        message:
-            'Tu cuenta ya fue creada. No hace falta registrarte otra vez. '
+        message: 'Tu cuenta ya fue creada. No hace falta registrarte otra vez. '
             'Tocá Ingresar a mi cuenta para reintentar el acceso.',
       );
     }
@@ -78,17 +85,24 @@ class AuthService {
     final cleanIdentifier = identifier.trim();
 
     if (cleanIdentifier.isEmpty) {
-      throw const ApiException(message: 'Ingresá tu DNI o email.');
+      throw const ApiException(
+        message: 'Ingresá tu DNI o email.',
+      );
     }
 
     if (password.isEmpty) {
-      throw const ApiException(message: 'Ingresá tu contraseña.');
+      throw const ApiException(
+        message: 'Ingresá tu contraseña.',
+      );
     }
 
     final response = await _apiClient.post(
       '/auth/login',
       requiresAuthentication: false,
-      body: {'identifier': cleanIdentifier, 'password': password},
+      body: {
+        'identifier': cleanIdentifier,
+        'password': password,
+      },
     );
 
     final data = _extractData(response);
@@ -103,7 +117,9 @@ class AuthService {
 
     _validateCustomer(user);
 
-    await _apiClient.saveAccessToken(accessToken.trim());
+    await _apiClient.saveAccessToken(
+      accessToken.trim(),
+    );
 
     /*
      * Si la biometría ya estaba habilitada,
@@ -117,7 +133,8 @@ class AuthService {
         );
       }
     } catch (_) {
-      // La sesión ya está guardada. Un fallo de biometría no bloquea el acceso.
+      // La sesión ya está guardada.
+      // Un fallo de biometría no bloquea el acceso.
     }
 
     return user;
@@ -128,8 +145,8 @@ class AuthService {
   ============================================================ */
 
   Future<UserModel> loginWithBiometrics() async {
-    final credentials = await _biometricService
-        .getCredentialsAfterAuthentication();
+    final credentials =
+        await _biometricService.getCredentialsAfterAuthentication();
 
     /*
      * Primero intentamos utilizar el token actual.
@@ -161,13 +178,136 @@ class AuthService {
   }
 
   /* ============================================================
+     OLVIDÉ MI CONTRASEÑA
+  ============================================================ */
+
+  Future<void> forgotPassword({
+    required String identifier,
+  }) async {
+    final cleanIdentifier = identifier.trim();
+
+    if (cleanIdentifier.isEmpty) {
+      throw const ApiException(
+        message: 'Ingresá tu DNI o email.',
+      );
+    }
+
+    await _apiClient.post(
+      '/auth/forgot-password',
+      requiresAuthentication: false,
+      body: {
+        'identifier': cleanIdentifier,
+      },
+    );
+  }
+
+  /* ============================================================
+     RESTABLECER CONTRASEÑA CON CÓDIGO
+  ============================================================ */
+
+  Future<void> resetPassword({
+    required String identifier,
+    required String code,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final cleanIdentifier = identifier.trim();
+
+    final cleanCode = code.trim().replaceAll(
+          ' ',
+          '',
+        );
+
+    if (cleanIdentifier.isEmpty) {
+      throw const ApiException(
+        message: 'Ingresá tu DNI o email.',
+      );
+    }
+
+    if (!RegExp(r'^\d{6}$').hasMatch(cleanCode)) {
+      throw const ApiException(
+        message: 'Ingresá el código de 6 dígitos que recibiste por email.',
+      );
+    }
+
+    if (newPassword.isEmpty) {
+      throw const ApiException(
+        message: 'Ingresá una nueva contraseña.',
+      );
+    }
+
+    if (newPassword.length < 8) {
+      throw const ApiException(
+        message: 'La contraseña debe tener al menos 8 caracteres.',
+      );
+    }
+
+    if (!RegExp(r'[A-Za-z]').hasMatch(newPassword) ||
+        !RegExp(r'\d').hasMatch(newPassword)) {
+      throw const ApiException(
+        message: 'La contraseña debe incluir letras y números.',
+      );
+    }
+
+    if (newPassword != confirmPassword) {
+      throw const ApiException(
+        message: 'Las contraseñas no coinciden.',
+      );
+    }
+
+    await _apiClient.post(
+      '/auth/reset-password',
+      requiresAuthentication: false,
+      body: {
+        'identifier': cleanIdentifier,
+        'code': cleanCode,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+    );
+
+    /*
+     * La contraseña guardada para Face ID / huella
+     * quedó obsoleta después de una recuperación.
+     *
+     * Deshabilitamos la biometría local para evitar
+     * que la próxima apertura intente iniciar sesión
+     * con la contraseña anterior.
+     *
+     * El usuario podrá volver a habilitarla una vez
+     * que inicie sesión con su nueva contraseña.
+     */
+    try {
+      await _biometricService.disable();
+    } catch (_) {
+      // El cambio de contraseña ya fue exitoso.
+      // Un problema eliminando la biometría local
+      // no debe convertir la operación en un error.
+    }
+
+    /*
+     * También eliminamos cualquier sesión local.
+     * Después del cambio el usuario debe volver
+     * a iniciar sesión con su nueva contraseña.
+     */
+    try {
+      await _apiClient.clearSession();
+    } catch (_) {
+      // No bloqueamos el cambio ya realizado.
+    }
+  }
+
+  /* ============================================================
      OBTENER USUARIO ACTUAL
   ============================================================ */
 
   Future<UserModel> getCurrentUser() async {
-    final response = await _apiClient.get('/auth/me');
+    final response = await _apiClient.get(
+      '/auth/me',
+    );
 
     final data = _extractData(response);
+
     final user = _extractUser(data);
 
     _validateCustomer(user);
@@ -202,13 +342,18 @@ class AuthService {
      ACTUALIZAR TELÉFONO
   ============================================================ */
 
-  Future<UserModel> updatePhone(String phone) async {
+  Future<UserModel> updatePhone(
+    String phone,
+  ) async {
     final response = await _apiClient.patch(
       '/users/me',
-      body: {'phone': phone.trim()},
+      body: {
+        'phone': phone.trim(),
+      },
     );
 
     final data = _extractData(response);
+
     final user = _extractUser(data);
 
     _validateCustomer(user);
@@ -218,6 +363,7 @@ class AuthService {
 
   /* ============================================================
      CAMBIAR CONTRASEÑA
+     (USUARIO YA AUTENTICADO)
   ============================================================ */
 
   Future<void> changePassword({
@@ -226,14 +372,19 @@ class AuthService {
   }) async {
     await _apiClient.patch(
       '/users/me/password',
-      body: {'currentPassword': currentPassword, 'newPassword': newPassword},
+      body: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
     );
 
     /*
-     * Si la biometría estaba activa, guardamos
-     * la nueva contraseña cifrada.
+     * Si la biometría estaba activa,
+     * guardamos la nueva contraseña cifrada.
      */
-    await _biometricService.updatePassword(newPassword);
+    await _biometricService.updatePassword(
+      newPassword,
+    );
   }
 
   /* ============================================================
@@ -243,7 +394,34 @@ class AuthService {
      credenciales biométricas.
   ============================================================ */
 
-  Future<void> logout({bool removeBiometrics = false}) async {
+  Future<void> deleteAccount({required String password}) async {
+    if (password.isEmpty) {
+      throw const ApiException(
+          message: 'Ingresá tu contraseña actual.', statusCode: 400);
+    }
+    final response = await _apiClient.delete('/auth/account',
+        requestTimeout: const Duration(seconds: 90),
+        body: {
+          'password': password,
+          'confirmDelete': true,
+        });
+    if (response['success'] != true) {
+      throw const ApiException(
+          message: 'No se confirmó la eliminación. Intentá nuevamente.');
+    }
+  }
+
+  Future<void> clearDeletedAccountSession() async {
+    // Intentar ambas limpiezas aunque falle una de ellas.
+    await Future.wait([
+      _apiClient.clearAllSecureData(),
+      _biometricService.disable(),
+    ]);
+  }
+
+  Future<void> logout({
+    bool removeBiometrics = false,
+  }) async {
     await _apiClient.clearSession();
 
     if (removeBiometrics) {
@@ -267,7 +445,10 @@ class AuthService {
     required String identifier,
     required String password,
   }) {
-    return _biometricService.enable(identifier: identifier, password: password);
+    return _biometricService.enable(
+      identifier: identifier,
+      password: password,
+    );
   }
 
   Future<void> disableBiometrics() {
@@ -288,14 +469,20 @@ class AuthService {
     return qrToken != null && qrToken.isNotEmpty;
   }
 
-  Future<void> saveQrToken(String qrToken) async {
+  Future<void> saveQrToken(
+    String qrToken,
+  ) async {
     final cleanQrToken = qrToken.trim();
 
     if (cleanQrToken.isEmpty) {
-      throw const ApiException(message: 'El código QR recibido no es válido.');
+      throw const ApiException(
+        message: 'El código QR recibido no es válido.',
+      );
     }
 
-    await _apiClient.saveQrToken(cleanQrToken);
+    await _apiClient.saveQrToken(
+      cleanQrToken,
+    );
   }
 
   /* ============================================================
@@ -313,7 +500,9 @@ class AuthService {
      FUNCIONES INTERNAS
   ============================================================ */
 
-  Map<String, dynamic> _extractData(Map<String, dynamic> response) {
+  Map<String, dynamic> _extractData(
+    Map<String, dynamic> response,
+  ) {
     final data = response['data'];
 
     if (data is Map<String, dynamic>) {
@@ -321,7 +510,9 @@ class AuthService {
     }
 
     if (data is Map) {
-      return Map<String, dynamic>.from(data);
+      return Map<String, dynamic>.from(
+        data,
+      );
     }
 
     throw const ApiException(
@@ -329,21 +520,31 @@ class AuthService {
     );
   }
 
-  UserModel _extractUser(Map<String, dynamic> data) {
+  UserModel _extractUser(
+    Map<String, dynamic> data,
+  ) {
     final user = data['user'];
 
     if (user is Map<String, dynamic>) {
-      return UserModel.fromJson(user);
+      return UserModel.fromJson(
+        user,
+      );
     }
 
     if (user is Map) {
-      return UserModel.fromJson(Map<String, dynamic>.from(user));
+      return UserModel.fromJson(
+        Map<String, dynamic>.from(
+          user,
+        ),
+      );
     }
 
     if (data.containsKey('id') ||
         data.containsKey('_id') ||
         data.containsKey('dni')) {
-      return UserModel.fromJson(data);
+      return UserModel.fromJson(
+        data,
+      );
     }
 
     throw const ApiException(
@@ -351,7 +552,9 @@ class AuthService {
     );
   }
 
-  void _validateCustomer(UserModel user) {
+  void _validateCustomer(
+    UserModel user,
+  ) {
     if (!user.isCustomer) {
       throw const ApiException(
         message: 'Esta aplicación es exclusivamente para clientes.',

@@ -164,7 +164,9 @@ class _SecurityPageState extends State<SecurityPage> {
        * sesión nuevamente.
        */
       await AuthService.instance.login(
-        identifier: widget.user.dni,
+        identifier: widget.user.dni.trim().isNotEmpty
+            ? widget.user.dni.trim()
+            : widget.user.email.trim(),
         password: password,
       );
 
@@ -175,7 +177,9 @@ class _SecurityPageState extends State<SecurityPage> {
        * solicitamos la huella o Face ID.
        */
       await AuthService.instance.enableBiometrics(
-        identifier: widget.user.dni,
+        identifier: widget.user.dni.trim().isNotEmpty
+            ? widget.user.dni.trim()
+            : widget.user.email.trim(),
         password: password,
       );
 

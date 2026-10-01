@@ -1,0 +1,71 @@
+RUTA GEN - APP FLUTTER / MULTIPLICADORES - 01/10/2026
+
+INSTALACIÓN
+1. Conservá una copia del proyecto actual.
+2. Copiá el contenido de este ZIP sobre la carpeta ruta_gen_app.
+   Para este cambio alcanza reemplazar lib y agregar test/points_promotion_test.dart.
+   Conservá tus archivos .env, firma y configuraciones locales.
+3. Desde PowerShell dentro de ruta_gen_app:
+   flutter pub get
+   flutter analyze
+   flutter test test/points_promotion_test.dart
+   flutter run -d emulator-5554
+   Si tu emulador tiene otro ID, consultalo con flutter devices.
+4. Para una APK de prueba: flutter build apk --release
+
+IMPORTANTE
+Requiere el backend de multiplicadores entregado en esta conversación.
+El panel debe guardar la configuración y el backend debe estar reiniciado.
+Si el backend todavía no tiene GET /api/points/promotion, el aviso queda
+oculto y el inicio conserva su funcionamiento.
+No se modificó la versión de publicación ni se agregó ninguna dependencia.
+
+COMPORTAMIENTO
+- Nuevo aviso debajo del saldo en Inicio.
+- 1x: no aparece el aviso adicional.
+- 1.25x: “¡Sumá 25% más puntos!” y “1,25×”.
+- 2x: “¡Sumá el doble de puntos!” y “2×”.
+- 3x: “¡Sumá el triple de puntos!” y “3×”.
+- Muestra el nombre de la promoción cuando existe, la equivalencia por litro
+  y el mínimo de litros informado por el servidor.
+- Toma exclusivamente el factor vigente de GET /api/points/promotion.
+  Las fechas, horarios y domingos se resuelven en el backend (Argentina).
+- Actualiza al abrir Inicio, volver a esa pestaña, volver del segundo plano,
+  deslizar para actualizar y cada minuto mientras Inicio está activo.
+- La consulta no usa cache por tiempo.
+- El aviso anterior se oculta durante la nueva consulta; ante error de red,
+  respuesta inválida o backend anterior, sigue oculto. No anuncia un valor
+  cuya vigencia no se haya confirmado en la última consulta.
+- Pausa el temporizador fuera del Inicio o en segundo plano.
+- Respuestas recibidas después de salir de la pantalla se descartan.
+- No recalcula el saldo ni puntos históricos: ambos mantienen los valores
+  del backend.
+
+ARCHIVOS MODIFICADOS / AGREGADOS
+lib/data/points_promotion.dart
+lib/data/ruta_gen_repository.dart (capacidad opcional para mantener compatibilidad)
+lib/data/api_ruta_gen_repository.dart
+lib/shared/widgets/points_promotion_banner.dart
+lib/features/home/home_page.dart
+lib/features/shell/app_shell.dart
+lib/services/api_client.dart (limpieza de GET pendientes sin errores sin capturar)
+test/points_promotion_test.dart
+
+VALIDACIÓN
+- Ejecutadas 18 comprobaciones del modelo con Dart 3.6.2: correctas.
+- Dart analyze del modelo points_promotion.dart: sin problemas.
+- Comprobada la sintaxis de los ocho archivos Dart agregados/modificados.
+- Incluidas nueve pruebas Flutter sobre API autenticada, ausencia de cache,
+  backend anterior, factores, fin de promoción, errores de red, cambios de
+  pestaña, segundo plano, respuestas tardías y texto grande.
+- No hay SDK Flutter en este entorno: las pruebas Flutter, la compilación
+  completa y la revisión visual deben ejecutarse en tu PC/emulador con los
+  comandos indicados arriba. No se generó una APK en este entorno.
+
+PRUEBA EN TU EMULADOR
+1. Panel: guardá multiplicador general 1.25x y verificá el aviso en Inicio.
+2. Cambiá a 2x: volvé a Inicio o deslizá para actualizar; debe mostrar 2x.
+3. Para probar programación, creá una promoción con el día actual y un factor
+   mayor al general. Confirmá que el aviso muestre el nombre de esa promoción.
+4. Desactivá la promoción y restablecé el general a 1x: el aviso desaparece
+   al actualizar. Esto no modifica puntos ya acreditados.

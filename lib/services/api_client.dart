@@ -64,6 +64,9 @@ class ApiClient {
 
   static final ApiClient instance = ApiClient._();
 
+  bool _sessionInvalidated = false;
+  int _cacheGeneration = 0;
+
   static const String _accessTokenKey = 'access_token';
   static const String _legacyQrTokenKey = 'qr_token';
 
@@ -75,8 +78,7 @@ class ApiClient {
    *
    * encryptedSharedPreferences is deprecated
    */
-  final FlutterSecureStorage _storage =
-      const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   final http.Client _httpClient;
 
@@ -105,8 +107,7 @@ class ApiClient {
    *
    * Los tres esperan el MISMO Future.
    */
-  final Map<String, Future<Map<String, dynamic>>>
-      _pendingGetRequests = {};
+  final Map<String, Future<Map<String, dynamic>>> _pendingGetRequests = {};
 
   /* ============================================================
      GET NORMAL
@@ -198,6 +199,7 @@ class ApiClient {
     /*
      * Usamos get(), que además deduplica requests simultáneos.
      */
+    final generation = _cacheGeneration;
     final result = await get(
       path,
       queryParameters: queryParameters,
@@ -207,7 +209,7 @@ class ApiClient {
     /*
      * Sólo cacheamos respuestas exitosas.
      */
-    if (cacheDuration > Duration.zero) {
+    if (cacheDuration > Duration.zero && generation == _cacheGeneration) {
       _getCache[cacheKey] = _CacheEntry(
         data: Map<String, dynamic>.from(result),
         expiresAt: DateTime.now().add(
@@ -285,9 +287,11 @@ class ApiClient {
     Map<String, dynamic>? body,
     Map<String, String>? queryParameters,
     bool requiresAuthentication = true,
+    Duration? requestTimeout,
   }) {
     return _request(
       method: 'DELETE',
+      requestTimeout: requestTimeout,
       path: path,
       body: body,
       queryParameters: queryParameters,
@@ -344,14 +348,18 @@ class ApiClient {
      * Cuando termine, sea OK o error,
      * lo eliminamos de pendientes.
      */
-    future.whenComplete(() {
-      if (identical(
-        _pendingGetRequests[requestKey],
-        future,
-      )) {
+    void clearPending() {
+      if (identical(_pendingGetRequests[requestKey], future)) {
         _pendingGetRequests.remove(requestKey);
       }
-    });
+    }
+
+    // Handle the cleanup branch's error too: an ignored whenComplete Future
+    // would report an uncaught error even if the caller catches the API error.
+    future.then<void>(
+      (_) => clearPending(),
+      onError: (Object error, StackTrace stackTrace) => clearPending(),
+    );
 
     return future;
   }
@@ -366,6 +374,7 @@ class ApiClient {
     Map<String, dynamic>? body,
     Map<String, String>? queryParameters,
     required bool requiresAuthentication,
+    Duration? requestTimeout,
   }) async {
     final uri = _buildUri(
       path,
@@ -384,24 +393,20 @@ class ApiClient {
     if (requiresAuthentication) {
       final accessToken = await getAccessToken();
 
-      if (accessToken == null ||
-          accessToken.trim().isEmpty) {
+      if (accessToken == null || accessToken.trim().isEmpty) {
         throw const ApiException(
-          message:
-              'La sesión no está disponible. Iniciá sesión nuevamente.',
+          message: 'La sesión no está disponible. Iniciá sesión nuevamente.',
           statusCode: 401,
         );
       }
 
-      headers['Authorization'] =
-          'Bearer ${accessToken.trim()}';
+      headers['Authorization'] = 'Bearer ${accessToken.trim()}';
     }
 
     try {
       late http.Response response;
 
-      final encodedBody =
-          body == null ? null : jsonEncode(body);
+      final encodedBody = body == null ? null : jsonEncode(body);
 
       /* ============================================================
          EJECUTAR REQUEST
@@ -414,7 +419,7 @@ class ApiClient {
                 uri,
                 headers: headers,
               )
-              .timeout(ApiConfig.timeout);
+              .timeout(requestTimeout ?? ApiConfig.timeout);
 
           break;
 
@@ -425,7 +430,7 @@ class ApiClient {
                 headers: headers,
                 body: encodedBody,
               )
-              .timeout(ApiConfig.timeout);
+              .timeout(requestTimeout ?? ApiConfig.timeout);
 
           break;
 
@@ -436,7 +441,7 @@ class ApiClient {
                 headers: headers,
                 body: encodedBody,
               )
-              .timeout(ApiConfig.timeout);
+              .timeout(requestTimeout ?? ApiConfig.timeout);
 
           break;
 
@@ -447,7 +452,7 @@ class ApiClient {
                 headers: headers,
                 body: encodedBody,
               )
-              .timeout(ApiConfig.timeout);
+              .timeout(requestTimeout ?? ApiConfig.timeout);
 
           break;
 
@@ -458,14 +463,13 @@ class ApiClient {
                 headers: headers,
                 body: encodedBody,
               )
-              .timeout(ApiConfig.timeout);
+              .timeout(requestTimeout ?? ApiConfig.timeout);
 
           break;
 
         default:
           throw ApiException(
-            message:
-                'Método HTTP no compatible: $method.',
+            message: 'Método HTTP no compatible: $method.',
           );
       }
 
@@ -482,8 +486,7 @@ class ApiClient {
       );
     } on FormatException {
       throw const ApiException(
-        message:
-            'El servidor devolvió una respuesta inválida.',
+        message: 'El servidor devolvió una respuesta inválida.',
       );
     }
   }
@@ -496,15 +499,13 @@ class ApiClient {
     String path, {
     Map<String, String>? queryParameters,
   }) {
-    final normalizedPath =
-        path.startsWith('/') ? path : '/$path';
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
 
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}$normalizedPath',
     );
 
-    if (queryParameters == null ||
-        queryParameters.isEmpty) {
+    if (queryParameters == null || queryParameters.isEmpty) {
       return uri;
     }
 
@@ -521,8 +522,7 @@ class ApiClient {
     Uri uri,
     bool requiresAuthentication,
   ) {
-    final authPrefix =
-        requiresAuthentication ? 'AUTH' : 'PUBLIC';
+    final authPrefix = requiresAuthentication ? 'AUTH' : 'PUBLIC';
 
     return '$authPrefix|${uri.toString()}';
   }
@@ -545,8 +545,7 @@ class ApiClient {
     Map<String, dynamic> responseBody = {};
 
     if (response.body.trim().isNotEmpty) {
-      final decodedBody =
-          jsonDecode(response.body);
+      final decodedBody = jsonDecode(response.body);
 
       if (decodedBody is Map<String, dynamic>) {
         responseBody = decodedBody;
@@ -555,8 +554,7 @@ class ApiClient {
       }
     }
 
-    if (response.statusCode >= 200 &&
-        response.statusCode < 300) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
       return responseBody;
     }
 
@@ -578,11 +576,9 @@ class ApiClient {
     Map<String, dynamic> responseBody,
     int statusCode,
   ) {
-    final backendMessage =
-        responseBody['message'];
+    final backendMessage = responseBody['message'];
 
-    if (backendMessage is String &&
-        backendMessage.trim().isNotEmpty) {
+    if (backendMessage is String && backendMessage.trim().isNotEmpty) {
       return backendMessage.trim();
     }
 
@@ -632,18 +628,15 @@ class ApiClient {
    * /auth/me?... (si alguna vez existiera)
    */
   void invalidateCache(String path) {
-    final normalizedPath =
-        path.startsWith('/') ? path : '/$path';
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
 
-    final baseUrl =
-        '${ApiConfig.baseUrl}$normalizedPath';
+    final baseUrl = '${ApiConfig.baseUrl}$normalizedPath';
 
     var removed = 0;
 
     _getCache.removeWhere(
       (key, value) {
-        final matches =
-            key.startsWith('AUTH|$baseUrl') ||
+        final matches = key.startsWith('AUTH|$baseUrl') ||
             key.startsWith('PUBLIC|$baseUrl');
 
         if (matches) {
@@ -680,6 +673,8 @@ class ApiClient {
   ============================================================ */
 
   void clearCache() {
+    _cacheGeneration += 1;
+    _pendingGetRequests.clear();
     final amount = _getCache.length;
 
     _getCache.clear();
@@ -696,11 +691,9 @@ class ApiClient {
      INFORMACIÓN DE CACHE PARA DEBUG
   ============================================================ */
 
-  int get cacheEntries =>
-      _getCache.length;
+  int get cacheEntries => _getCache.length;
 
-  int get pendingGetRequests =>
-      _pendingGetRequests.length;
+  int get pendingGetRequests => _pendingGetRequests.length;
 
   /* ============================================================
      ACCESS TOKEN
@@ -719,9 +712,11 @@ class ApiClient {
       key: _accessTokenKey,
       value: accessToken,
     );
+    _sessionInvalidated = false;
   }
 
   Future<String?> getAccessToken() {
+    if (_sessionInvalidated) return Future.value(null);
     return _storage.read(
       key: _accessTokenKey,
     );
@@ -763,14 +758,13 @@ class ApiClient {
   ============================================================ */
 
   Future<bool> hasSession() async {
-    final token =
-        await getAccessToken();
+    final token = await getAccessToken();
 
-    return token != null &&
-        token.trim().isNotEmpty;
+    return token != null && token.trim().isNotEmpty;
   }
 
   Future<void> clearSession() async {
+    _sessionInvalidated = true;
     /*
      * Importantísimo:
      *
@@ -790,7 +784,8 @@ class ApiClient {
   Future<void> clearAllSecureData() async {
     clearCache();
 
-    await clearSession();
+    _sessionInvalidated = true;
+    await _storage.deleteAll();
   }
 
   /* ============================================================

@@ -1,11 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/models.dart';
 import '../../data/ruta_gen_repository.dart';
 import '../../models/user_model.dart';
 import '../../shared/widgets/identity_verification_banner.dart';
+import '../../shared/widgets/points_promotion_banner.dart';
 import '../../shared/widgets/ruta_gen_logo.dart';
 import '../../shared/widgets/visit_progress_card.dart';
 import '../../shared/widgets/section_title.dart';
@@ -20,32 +24,61 @@ class HomePage extends StatefulWidget {
     required this.onNavigate,
     required this.onRefreshUser,
     required this.onOpenNotifications,
+    required this.unreadNotifications,
     required this.onOpenGiftRewards,
+    this.isActive = true,
   });
 
+  final bool isActive;
   final RutaGenRepository repository;
   final UserModel user;
   final ValueChanged<int> onNavigate;
   final Future<void> Function() onRefreshUser;
   final VoidCallback onOpenNotifications;
+  final int unreadNotifications;
   final VoidCallback onOpenGiftRewards;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _bellController;
   late Future<List<Movement>> _movements;
   late Future<List<NewsItem>> _news;
   late Future<VisitProgress> _visitProgress;
+  int _promotionRefreshVersion = 0;
 
   @override
   void initState() {
     super.initState();
+    _bellController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+    if (widget.unreadNotifications > 0) _bellController.repeat();
 
     _movements = widget.repository.getMovements();
     _news = widget.repository.getNews(limit: 5);
     _visitProgress = widget.repository.getVisitProgress();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.unreadNotifications > 0 && !_bellController.isAnimating) {
+      _bellController.repeat();
+    } else if (widget.unreadNotifications == 0 && _bellController.isAnimating) {
+      _bellController.stop();
+      _bellController.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _bellController.dispose();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -59,6 +92,7 @@ class _HomePageState extends State<HomePage> {
         widget.repository.getVisitProgress();
 
     setState(() {
+      _promotionRefreshVersion++;
       _movements = movements;
       _news = news;
       _visitProgress = visitProgress;
@@ -126,6 +160,7 @@ class _HomePageState extends State<HomePage> {
               const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverAppBar(
+              systemOverlayStyle: AppTheme.darkBackgroundOverlay,
               pinned: true,
               expandedHeight: 118,
               backgroundColor: AppColors.navy,
@@ -136,9 +171,62 @@ class _HomePageState extends State<HomePage> {
               actions: [
                 IconButton(
                   onPressed: widget.onOpenNotifications,
-                  tooltip: 'Notificaciones',
-                  icon: const Icon(
-                    Icons.notifications_outlined,
+                  tooltip: widget.unreadNotifications > 0
+                      ? '${widget.unreadNotifications} notificaciones sin leer'
+                      : 'Notificaciones',
+                  icon: SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Center(
+                          child: AnimatedBuilder(
+                            animation: _bellController,
+                            builder: (_, child) {
+                              final t = _bellController.value;
+                              final angle = t < .55
+                                  ? .18 * math.sin(t * math.pi * 9) *
+                                      (1 - t / .55)
+                                  : 0.0;
+                              return Transform.rotate(
+                                angle: angle,
+                                alignment: Alignment.topCenter,
+                                child: child,
+                              );
+                            },
+                            child: const Icon(Icons.notifications_outlined),
+                          ),
+                        ),
+                        if (widget.unreadNotifications > 0)
+                          Positioned(
+                            top: -3,
+                            right: -6,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 18),
+                              height: 18,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE73454),
+                                borderRadius: BorderRadius.circular(9),
+                                border: Border.all(color: AppColors.navy, width: 1.5),
+                              ),
+                              child: Text(
+                                widget.unreadNotifications > 99
+                                    ? '99+'
+                                    : '${widget.unreadNotifications}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -200,6 +288,11 @@ class _HomePageState extends State<HomePage> {
                     ),
                     onRewardsTap: () =>
                         widget.onNavigate(3),
+                  ),
+                  PointsPromotionBanner(
+                    repository: widget.repository,
+                    isActive: widget.isActive,
+                    refreshVersion: _promotionRefreshVersion,
                   ),
                   const SizedBox(height: 18),
                   Row(
@@ -668,6 +761,16 @@ class _LatestMovementCard
   }
 
   String _details() {
+    if (movement.type == MovementType.adjustment) {
+      final date = movement.argentinaDate;
+      final timestamp = '${date.day.toString().padLeft(2, '0')}/'
+          '${date.month.toString().padLeft(2, '0')}/'
+          '${date.year} · '
+          '${date.hour.toString().padLeft(2, '0')}:'
+          '${date.minute.toString().padLeft(2, '0')}';
+      return '${movement.subtitle}\n$timestamp';
+    }
+
     final station =
         movement.stationName?.trim();
 
@@ -727,7 +830,9 @@ class _LatestMovementCard
                         ? AppColors.blue
                         : AppColors.danger,
                 child: Icon(
-                  movement.type == MovementType.load
+                  movement.type == MovementType.adjustment
+                      ? Icons.tune_rounded
+                      : movement.type == MovementType.load
                       ? Icons.local_gas_station_rounded
                       : movement.type == MovementType.visitBonus
                           ? Icons.route_rounded

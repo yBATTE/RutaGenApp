@@ -263,7 +263,7 @@ class _MyQrPageState extends State<MyQrPage> {
                     const SizedBox(height: 22),
                     Text(
                       _unavailableQrCode == null
-                          ? 'Mostralo al playero'
+                          ? 'Mostrá este QR al Vendedor de Playa'
                           : 'Generá un nuevo QR',
                       textAlign: TextAlign.center,
                       style: const TextStyle(

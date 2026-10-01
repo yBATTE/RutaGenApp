@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'auth_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(
@@ -37,16 +38,14 @@ class PushMessage {
 class PushNotificationService {
   PushNotificationService._();
 
-  static final PushNotificationService instance =
-      PushNotificationService._();
+  static final PushNotificationService instance = PushNotificationService._();
 
   final ApiClient _apiClient = ApiClient.instance;
 
   final StreamController<PushMessage> _foregroundController =
       StreamController<PushMessage>.broadcast();
 
-  final ValueNotifier<String?> actionNotifier =
-      ValueNotifier<String?>(null);
+  final ValueNotifier<String?> actionNotifier = ValueNotifier<String?>(null);
 
   bool _available = false;
   bool _listenersReady = false;
@@ -54,8 +53,7 @@ class PushNotificationService {
 
   StreamSubscription<String>? _tokenSubscription;
 
-  Stream<PushMessage> get foregroundMessages =>
-      _foregroundController.stream;
+  Stream<PushMessage> get foregroundMessages => _foregroundController.stream;
 
   /* ============================================================
      INICIALIZACIÓN FIREBASE / PUSH
@@ -90,8 +88,7 @@ class PushNotificationService {
 
       debugPrint('🔔 PUSH: solicitando permisos...');
 
-      final settings =
-          await FirebaseMessaging.instance.requestPermission(
+      final settings = await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -168,9 +165,7 @@ class PushNotificationService {
         _foregroundController.add(
           PushMessage(
             title: notification?.title ?? 'Ruta Gen',
-            body:
-                notification?.body ??
-                'Tenés una nueva notificación.',
+            body: notification?.body ?? 'Tenés una nueva notificación.',
             action: _actionFromMessage(message),
           ),
         );
@@ -203,15 +198,12 @@ class PushNotificationService {
   ============================================================ */
 
   String _actionFromMessage(RemoteMessage message) {
-    final action =
-        (
-              message.data['destination'] ??
-              message.data['action'] ??
-              'NOTIFICATIONS'
-            )
-            .toString()
-            .trim()
-            .toUpperCase();
+    final action = (message.data['destination'] ??
+            message.data['action'] ??
+            'NOTIFICATIONS')
+        .toString()
+        .trim()
+        .toUpperCase();
 
     return action.isEmpty ? 'NOTIFICATIONS' : action;
   }
@@ -225,8 +217,7 @@ class PushNotificationService {
   void openAction(String action) {
     final cleanAction = action.trim().toUpperCase();
 
-    actionNotifier.value =
-        cleanAction.isEmpty ? 'NOTIFICATIONS' : cleanAction;
+    actionNotifier.value = cleanAction.isEmpty ? 'NOTIFICATIONS' : cleanAction;
   }
 
   String? consumePendingAction() {
@@ -336,8 +327,7 @@ class PushNotificationService {
         '🔥 PUSH: solicitando token FCM...',
       );
 
-      final token =
-          await FirebaseMessaging.instance.getToken();
+      final token = await FirebaseMessaging.instance.getToken();
 
       if (token == null || token.trim().isEmpty) {
         debugPrint(
@@ -392,8 +382,7 @@ class PushNotificationService {
   Future<void> _configureTokenRefreshListener() async {
     await _tokenSubscription?.cancel();
 
-    _tokenSubscription =
-        FirebaseMessaging.instance.onTokenRefresh.listen(
+    _tokenSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(
       (newToken) async {
         try {
           final cleanToken = newToken.trim();
@@ -446,8 +435,7 @@ class PushNotificationService {
 
     for (var attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        final token =
-            await FirebaseMessaging.instance.getAPNSToken();
+        final token = await FirebaseMessaging.instance.getAPNSToken();
 
         if (token != null && token.trim().isNotEmpty) {
           debugPrint(
@@ -491,6 +479,8 @@ class PushNotificationService {
   ============================================================ */
 
   Future<void> _registerToken(String token) async {
+    if (AuthService.instance.accountDeletionInProgress ||
+        !await _apiClient.hasSession()) return;
     final cleanToken = token.trim();
 
     if (cleanToken.isEmpty) {
@@ -501,8 +491,7 @@ class PushNotificationService {
       return;
     }
 
-    final platform =
-        Platform.isIOS ? 'IOS' : 'ANDROID';
+    final platform = Platform.isIOS ? 'IOS' : 'ANDROID';
 
     debugPrint('');
     debugPrint(
@@ -546,6 +535,22 @@ class PushNotificationService {
      DESREGISTRAR AL CERRAR SESIÓN
   ============================================================ */
 
+  Future<void> clearAfterAccountDeletion() async {
+    await _tokenSubscription?.cancel();
+    _tokenSubscription = null;
+    actionNotifier.value = null;
+    // El backend ya eliminó los dispositivos de la cuenta. No consultar
+    // endpoints protegidos ni volver a registrar el token borrado.
+    if (_available) {
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (_) {
+        debugPrint(
+            'No se pudo renovar el token push local; la cuenta ya no tiene dispositivos registrados.');
+      }
+    }
+  }
+
   Future<void> unregisterCurrentDevice() async {
     debugPrint('');
     debugPrint(
@@ -569,8 +574,7 @@ class PushNotificationService {
        * usamos el token FCM que ya pueda existir.
        */
 
-      final token =
-          await FirebaseMessaging.instance.getToken();
+      final token = await FirebaseMessaging.instance.getToken();
 
       if (token != null && token.trim().isNotEmpty) {
         final cleanToken = token.trim();

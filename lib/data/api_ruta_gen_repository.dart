@@ -3,14 +3,100 @@ import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../services/api_client.dart';
 import 'models.dart';
+import 'points_promotion.dart';
 import 'ruta_gen_repository.dart';
 
-class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
+class ApiRutaGenRepository
+    implements RutaGenRepository, TemporaryQrRepository, PointsPromotionRepository {
   ApiRutaGenRepository({
     ApiClient? apiClient,
   }) : _apiClient = apiClient ?? ApiClient.instance;
 
   final ApiClient _apiClient;
+
+  @override
+  Future<PointsPromotion?> getPointsPromotion() async {
+    try {
+      // No TTL cache: a promotion can start/end while the app is open.
+      final response = await _apiClient.get('/points/promotion');
+      return PointsPromotion.fromJson(_asMap(response['data']));
+    } on ApiException catch (error) {
+      // Allow installation before the backend update without breaking Home.
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<DrawEvent>> getDrawEvents() async {
+    final response = await _apiClient.get('/draws/events');
+    final data = _asMap(response['data']);
+    final items = data['items'] is List ? data['items'] as List : const [];
+    return items.map((raw) {
+      final item = _asMap(raw);
+      final result = _asMap(item['result']);
+      final winner = _asMap(result['winner']);
+      final paths = item['imagePaths'] is List ? item['imagePaths'] as List : const [];
+      return DrawEvent(
+        id: _stringValue(item['id']), title: _stringValue(item['title']),
+        prizeName: _stringValue(item['prizeName']), description: _stringValue(item['description']),
+        rules: _stringValue(item['rules']), conditions: _stringValue(item['conditions']),
+        metric: _stringValue(item['metric'], fallback: 'POINTS'),
+        qualifyingCount: _intValue(item['qualifyingCount']),
+        status: _stringValue(item['status']), startAt: _nullableDateValue(item['startAt']),
+        endAt: _nullableDateValue(item['endAt']), drawAt: _nullableDateValue(item['drawAt']),
+        imageUrls: paths.map(_rewardImageUrl).whereType<String>().toList(),
+        winnerName: winner['name'] == null ? null : _stringValue(winner['name']),
+      );
+    }).toList();
+  }
+
+  @override
+  Future<MonthlyRanking> getDrawEventRanking(String id) async {
+    final response = await _apiClient.get('/draws/events/${Uri.encodeComponent(id)}');
+    final data = _asMap(response['data']);
+    final mine = _asMap(data['me']);
+    final items = data['top'] is List ? data['top'] as List : const [];
+    return MonthlyRanking(
+      month: '', configured: true, status: _stringValue(data['status']),
+      prizeName: _stringValue(data['prizeName']),
+      cycleStart: _nullableDateValue(data['startAt']), cycleEnd: _nullableDateValue(data['endAt']),
+      top: items.map((raw) { final entry = _asMap(raw); return RankingEntry(
+        position: _intValue(entry['position']), name: _stringValue(entry['name']),
+        points: _intValue(entry['points']), liters: _doubleValue(entry['liters']), isMe: entry['isMe'] == true,
+      ); }).toList(),
+      position: mine['position'] == null ? null : _intValue(mine['position']),
+      points: _intValue(mine['points']), liters: _doubleValue(mine['liters']), eligible: mine['eligible'] == true,
+    );
+  }
+
+  @override
+  Future<MonthlyRanking> getMonthlyRanking({String type = 'BIKE'}) async {
+    final response = await _apiClient.get('/draws/ranking?type=$type');
+    final data = _asMap(response['data']);
+    final mine = _asMap(data['me']);
+    final items = data['top'] is List ? data['top'] as List : const [];
+    return MonthlyRanking(
+      month: _stringValue(data['month']),
+      configured: data['configured'] == true,
+      status: _stringValue(data['status']),
+      prizeName: _stringValue(data['prizeName']),
+      cycleStart: DateTime.tryParse(_stringValue(data['cycleStart'])),
+      cycleEnd: DateTime.tryParse(_stringValue(data['cycleEnd'])),
+      top: items.map((raw) {
+        final entry = _asMap(raw);
+        return RankingEntry(
+          position: _intValue(entry['position']),
+          name: _stringValue(entry['name']),
+          points: _intValue(entry['points']),
+          isMe: entry['isMe'] == true,
+        );
+      }).toList(),
+      position: mine['position'] == null ? null : _intValue(mine['position']),
+      points: _intValue(mine['points']),
+      eligible: mine['eligible'] == true,
+    );
+  }
 
   Map<String, dynamic> _asMap(dynamic value) {
     if (value is Map<String, dynamic>) return value;
@@ -26,6 +112,7 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
     if (data is Map) {
       final nestedData = data['data'];
       if (nestedData is List) return nestedData;
+      if (data['items'] is List) return data['items'] as List;
     }
 
     return const [];
@@ -198,6 +285,46 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
     );
   }
 
+  Movement _movementFromAdjustment(Map<String, dynamic> data) {
+    final metadata = _asMap(data['metadata']);
+    final reason = _stringValue(
+      data['reason'] ?? metadata['reason'] ?? data['description'],
+      fallback: 'Ajuste de puntos',
+    );
+    return Movement(
+      id: 'adjustment-${_stringValue(data['id'] ?? data['_id'])}',
+      title: 'Ajuste manual',
+      subtitle: 'Motivo: $reason',
+      date: _dateValue(data['createdAt'] ?? data['completedAt']),
+      points: _intValue(data['points']),
+      type: MovementType.adjustment,
+    );
+  }
+
+  // Obtiene suficientes registros de cada fuente para paginar el historial
+  // combinado, incluso después de los primeros 100 movimientos.
+  Future<List<dynamic>> _movementSource(
+    String path,
+    int count, {
+    Map<String, String> filters = const {},
+  }) async {
+    final items = <dynamic>[];
+    var sourcePage = 1;
+    final sourceLimit = count > 100 ? 100 : count;
+    while (items.length < count) {
+      final response = await _apiClient.get(path, queryParameters: {
+        ...filters,
+        'page': sourcePage.toString(),
+        'limit': sourceLimit.toString(),
+      });
+      final batch = _extractList(response);
+      items.addAll(batch);
+      if (batch.length < sourceLimit) break;
+      sourcePage++;
+    }
+    return items;
+  }
+
   Movement _movementFromRewardActivity(Map<String, dynamic> data) {
     final kind = _stringValue(
       data['redemptionKind'] ?? data['type'],
@@ -349,6 +476,12 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
   }
 
   Reward _rewardFromData(Map<String, dynamic> data) {
+    final gallery = data['imagePaths'] is List
+        ? (data['imagePaths'] as List)
+            .map(_rewardImageUrl)
+            .whereType<String>()
+            .toList()
+        : <String>[];
     return Reward(
       id: _stringValue(data['id'] ?? data['_id']),
       name: _stringValue(data['name'], fallback: 'Premio'),
@@ -359,6 +492,7 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
       points: _intValue(data['pointsCost'] ?? data['points']),
       stock: _intValue(data['totalStock'] ?? data['stock']),
       imageUrl: _rewardImageUrl(data['imagePath'] ?? data['imageUrl']),
+      imageUrls: gallery,
       icon: Icons.card_giftcard_rounded,
     );
   }
@@ -431,38 +565,32 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
     final safePage = page < 1 ? 1 : page;
     final safeLimit = limit < 1 ? 1 : (limit > 100 ? 100 : limit);
     final requestedCount = safePage * safeLimit;
-    final requestedItems = requestedCount > 100 ? 100 : requestedCount;
-
     final responses = await Future.wait([
-      _apiClient.get(
-        '/loads/me',
-        queryParameters: {
-          'page': '1',
-          'limit': requestedItems.toString(),
-          'status': 'CONFIRMED',
-        },
-      ),
-      _apiClient.get(
-        '/rewards/me',
-        queryParameters: {
-          'page': '1',
-          'limit': requestedItems.toString(),
-        },
-      ),
+      _movementSource('/loads/me', requestedCount, filters: {'status': 'CONFIRMED'}),
+      _movementSource('/rewards/me', requestedCount),
+      _movementSource('/users/me/point-adjustments', requestedCount),
     ]);
 
     final movements = <Movement>[
-      ..._extractList(responses[0]).whereType<Map>().map(
+      ...responses[0].whereType<Map>().map(
             (item) => _movementFromLoad(
               Map<String, dynamic>.from(item),
             ),
           ),
-      ..._extractList(responses[1]).whereType<Map>().map(
+      ...responses[1].whereType<Map>().map(
             (item) => _movementFromRewardActivity(
               Map<String, dynamic>.from(item),
             ),
           ),
-    ]..sort((a, b) => b.date.compareTo(a.date));
+      ...responses[2].whereType<Map>().map(
+            (item) => _movementFromAdjustment(
+              Map<String, dynamic>.from(item),
+            ),
+          ),
+    ]..sort((a, b) {
+        final dateOrder = b.date.compareTo(a.date);
+        return dateOrder != 0 ? dateOrder : a.id.compareTo(b.id);
+      });
 
     final start = (safePage - 1) * safeLimit;
     if (start >= movements.length) return const [];
@@ -576,7 +704,7 @@ class ApiRutaGenRepository implements RutaGenRepository, TemporaryQrRepository {
   @override
   Future<String> redeemReward(String rewardId) async {
     throw const ApiException(
-      message: 'El canje debe ser confirmado por el playero desde su panel.',
+      message: 'El canje debe ser confirmado por el Vendedor de Playa desde su panel.',
     );
   }
 }

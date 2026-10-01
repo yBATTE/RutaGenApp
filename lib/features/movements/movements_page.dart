@@ -142,7 +142,7 @@ class _MovementsPageState
   }
 
   String _day(DateTime date) {
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc().subtract(const Duration(hours: 3));
 
     final today = DateTime(
       now.year,
@@ -170,6 +170,12 @@ class _MovementsPageState
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/'
         '${date.year}';
+  }
+
+  String _adjustmentDateTime(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year} · ${_hour(date)}';
   }
 
   String _hour(DateTime date) {
@@ -327,8 +333,8 @@ class _MovementsPageState
           final positive = movement.points > 0;
 
           final showDay = index == 0 ||
-              _day(_movements[index - 1].date) !=
-                  _day(movement.date);
+              _day(_movements[index - 1].argentinaDate) !=
+                  _day(movement.argentinaDate);
 
           return Column(
             crossAxisAlignment:
@@ -341,7 +347,7 @@ class _MovementsPageState
                     bottom: 7,
                   ),
                   child: Text(
-                    _day(movement.date),
+                    _day(movement.argentinaDate),
                     style: const TextStyle(
                       color: AppColors.blue,
                       fontWeight: FontWeight.w800,
@@ -370,11 +376,13 @@ class _MovementsPageState
                                 ? AppColors.blue
                                 : AppColors.danger,
                         child: Icon(
-                          movement.type == MovementType.load
-                              ? Icons.local_gas_station_rounded
-                              : movement.type == MovementType.visitBonus
-                                  ? Icons.route_rounded
-                                  : Icons.card_giftcard_rounded,
+                          movement.type == MovementType.adjustment
+                              ? Icons.tune_rounded
+                              : movement.type == MovementType.load
+                                  ? Icons.local_gas_station_rounded
+                                  : movement.type == MovementType.visitBonus
+                                      ? Icons.route_rounded
+                                      : Icons.card_giftcard_rounded,
                         ),
                       ),
                       const SizedBox(width: 13),
@@ -402,7 +410,9 @@ class _MovementsPageState
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              _hour(movement.date),
+                              movement.type == MovementType.adjustment
+                                  ? _adjustmentDateTime(movement.argentinaDate)
+                                  : _hour(movement.argentinaDate),
                               style: TextStyle(
                                 color:
                                     Colors.grey.shade500,

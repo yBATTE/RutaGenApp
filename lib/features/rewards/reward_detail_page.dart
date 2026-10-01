@@ -4,7 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
 import '../../data/ruta_gen_repository.dart';
 
-class RewardDetailPage extends StatelessWidget {
+class RewardDetailPage extends StatefulWidget {
   const RewardDetailPage({
     super.key,
     required this.repository,
@@ -20,6 +20,13 @@ class RewardDetailPage extends StatelessWidget {
   final int availablePoints;
   final VoidCallback onShowQr;
 
+  @override
+  State<RewardDetailPage> createState() => _RewardDetailPageState();
+}
+
+class _RewardDetailPageState extends State<RewardDetailPage> {
+  int _selectedPhoto = 0;
+
   String _points(int value) {
     return value.toString().replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
@@ -29,13 +36,16 @@ class RewardDetailPage extends StatelessWidget {
 
   void _openQr(BuildContext context) {
     Navigator.of(context).pop();
-    onShowQr();
+    widget.onShowQr();
   }
 
   @override
   Widget build(BuildContext context) {
     final canRedeem =
-        availablePoints >= reward.points && reward.stock > 0;
+        widget.availablePoints >= widget.reward.points && widget.reward.stock > 0;
+    final reward = widget.reward;
+    final availablePoints = widget.availablePoints;
+    final gallery = reward.gallery;
 
     return Scaffold(
       appBar: AppBar(
@@ -54,7 +64,7 @@ class RewardDetailPage extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
         children: [
           Container(
-            height: 260,
+            height: 300,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -62,14 +72,28 @@ class RewardDetailPage extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: reward.imageUrl != null && reward.imageUrl!.isNotEmpty
-                ? Image.network(
-                    reward.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(
-                      reward.icon,
-                      size: 130,
-                      color: AppColors.navy,
+            child: gallery.isNotEmpty
+                ? PageView.builder(
+                    itemCount: gallery.length,
+                    onPageChanged: (index) => setState(() => _selectedPhoto = index),
+                    itemBuilder: (context, index) => GestureDetector(
+                      onTap: () => showDialog<void>(
+                        context: context,
+                        builder: (context) => Dialog(
+                          backgroundColor: Colors.white,
+                          insetPadding: const EdgeInsets.all(12),
+                          child: InteractiveViewer(
+                            minScale: 1, maxScale: 4,
+                            child: Image.network(gallery[index], fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined)),
+                          ),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Image.network(gallery[index], fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(reward.icon, size: 130, color: AppColors.navy)),
+                      ),
                     ),
                   )
                 : Icon(
@@ -78,6 +102,20 @@ class RewardDetailPage extends StatelessWidget {
                     color: AppColors.navy,
                   ),
           ),
+          if (gallery.length > 1) ...[
+            const SizedBox(height: 12),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(gallery.length, (index) =>
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: _selectedPhoto == index ? 20 : 7, height: 7,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  color: _selectedPhoto == index ? AppColors.blue : AppColors.border,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            )),
+          ],
           const SizedBox(height: 22),
           Text(
             reward.name,
@@ -172,7 +210,7 @@ class RewardDetailPage extends StatelessWidget {
               SizedBox(width: 7),
               Flexible(
                 child: Text(
-                  'El playero verificará el premio y confirmará la entrega.',
+                  'El Vendedor de Playa verificará el premio y confirmará la entrega.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.muted),
                 ),

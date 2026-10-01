@@ -7,6 +7,26 @@ class MockRutaGenRepository implements RutaGenRepository {
   static const _delay = Duration(milliseconds: 350);
 
   @override
+  Future<List<DrawEvent>> getDrawEvents() async => const [];
+
+  @override
+  Future<MonthlyRanking> getDrawEventRanking(String id) => getMonthlyRanking();
+
+  @override
+  Future<MonthlyRanking> getMonthlyRanking({String type = 'BIKE'}) async {
+    await Future<void>.delayed(_delay);
+    final now = DateTime.now();
+    return MonthlyRanking(
+      prizeName: type == 'BIKE' ? 'Bicicleta' : 'Moto',
+      cycleStart: now,
+      cycleEnd: DateTime(now.year, now.month + (type == 'BIKE' ? 1 : 6), now.day),
+      month: '${now.year}-${now.month.toString().padLeft(2, '0')}',
+      top: List.generate(20, (i) => RankingEntry(position: i + 1, name: 'Participante ${i + 1}', points: 420 - i * 13, isMe: false)),
+      position: 27, points: 36, eligible: false,
+    );
+  }
+
+  @override
   Future<Customer> getCustomer() async {
     await Future<void>.delayed(_delay);
     return const Customer(

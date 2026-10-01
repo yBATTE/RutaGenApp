@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,8 +15,9 @@ import 'auth_flow_test.dart' show customer, payload;
 Future<void> openForm(
   WidgetTester tester,
   AuthService auth,
-  VoidCallback completed,
-) async {
+  VoidCallback completed, {
+  String dni = '12345678',
+}) async {
   tester.view.physicalSize = const Size(1000, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -45,10 +47,10 @@ Future<void> openForm(
   await tester.tap(find.text('Abrir registro'));
   await tester.pumpAndSettle();
   final fields = find.byType(TextFormField);
-  const values = [
+  final values = [
     'Prueba',
     'Registro',
-    '12345678',
+    dni,
     'prueba@example.com',
     'Prueba1234',
   ];
@@ -63,6 +65,46 @@ Future<void> openForm(
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+  testWidgets('registro sin DNI reintenta por correo sin duplicar el alta', (
+    tester,
+  ) async {
+    var registers = 0;
+    var logins = 0;
+    var navigations = 0;
+    final userWithoutDni = {...customer}..remove('dni');
+    final api = ApiClient.forTesting(
+      httpClient: MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        if (request.url.path.endsWith('/register')) {
+          registers++;
+          expect(body.containsKey('dni'), false);
+          return payload({'user': userWithoutDni}, 201);
+        }
+        logins++;
+        expect(body['identifier'], 'prueba@example.com');
+        return logins == 1
+            ? http.Response('{"message":"Temporal"}', 503)
+            : payload({'user': userWithoutDni, 'accessToken': 'session-test'});
+      }),
+    );
+    await openForm(
+      tester,
+      AuthService.forTesting(apiClient: api),
+      () => navigations++,
+      dni: '',
+    );
+    expect(find.text('Ingresá tu DNI.'), findsNothing);
+    await tester.tap(find.text('Crear mi cuenta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ingresar a mi cuenta'), findsOneWidget);
+    await tester.tap(find.text('Ingresar a mi cuenta'));
+    await tester.pumpAndSettle();
+    expect(registers, 1);
+    expect(logins, 2);
+    expect(navigations, 1);
+    expect(await api.getAccessToken(), 'session-test');
+  });
+
   testWidgets(
     'doble toque crea una cuenta, guarda sesion y sale una sola vez',
     (tester) async {

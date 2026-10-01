@@ -165,7 +165,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               _ReadOnlyField(
                 icon: Icons.badge_outlined,
                 label: 'DNI',
-                value: widget.user.dni,
+                value: widget.user.dni.trim().isEmpty
+                    ? 'Pendiente de completar'
+                    : widget.user.dni,
               ),
               const SizedBox(height: 12),
               _ReadOnlyField(
@@ -258,7 +260,7 @@ class _InformationBanner extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Por seguridad, el DNI y el correo electrónico no pueden modificarse desde la aplicación.',
+              'Si no completaste el DNI al registrarte, podrás completarlo al verificar tu identidad presencialmente en una estación Ruta GEN. Por seguridad, el DNI y el correo electrónico no pueden modificarse desde la aplicación.',
               style: TextStyle(
                 color: AppColors.navy,
                 height: 1.4,

@@ -5,11 +5,15 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../shared/widgets/ruta_gen_logo.dart';
+import 'forgot_password_page.dart';
 import 'register_page.dart';
 import '../../models/user_model.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.onAuthenticated});
+  const LoginPage({
+    super.key,
+    required this.onAuthenticated,
+  });
 
   final ValueChanged<UserModel> onAuthenticated;
 
@@ -21,7 +25,6 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
   final _userController = TextEditingController();
-
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
@@ -49,7 +52,9 @@ class _LoginPageState extends State<LoginPage> {
       AuthService.instance.isBiometricEnabled(),
     ]);
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _biometricAvailable = results[0];
@@ -58,7 +63,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
-    if (_loading) return;
+    if (_loading) {
+      return;
+    }
+
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) {
@@ -68,7 +76,6 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
 
     final identifier = _userController.text.trim();
-
     final password = _passwordController.text;
 
     try {
@@ -77,10 +84,14 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       try {
-        final alreadyEnabled = await AuthService.instance.isBiometricEnabled();
+        final alreadyEnabled =
+            await AuthService.instance.isBiometricEnabled();
+
         if (!alreadyEnabled) {
           await _offerBiometricSetup(
             identifier: identifier,
@@ -88,20 +99,29 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
       } catch (_) {
-        // La biometría es opcional; el login ya fue completado.
+        // La biometría es opcional.
+        // El login ya fue completado.
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       widget.onAuthenticated(user);
     } on ApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       _showMessage(error.message);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      _showMessage('Ocurrió un error inesperado. Intentá nuevamente.');
+      _showMessage(
+        'Ocurrió un error inesperado. Intentá nuevamente.',
+      );
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -113,9 +133,12 @@ class _LoginPageState extends State<LoginPage> {
     required String identifier,
     required String password,
   }) async {
-    final available = await AuthService.instance.isBiometricAvailable();
+    final available =
+        await AuthService.instance.isBiometricAvailable();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (!available) {
       _showMessage(
@@ -135,7 +158,9 @@ class _LoginPageState extends State<LoginPage> {
             size: 42,
             color: AppColors.blue,
           ),
-          title: const Text('Activar ingreso biométrico'),
+          title: const Text(
+            'Activar ingreso biométrico',
+          ),
           content: const Text(
             '¿Querés guardar tus credenciales de forma segura para ingresar automáticamente con huella o Face ID la próxima vez?',
           ),
@@ -150,7 +175,9 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              icon: const Icon(Icons.fingerprint_rounded),
+              icon: const Icon(
+                Icons.fingerprint_rounded,
+              ),
               label: const Text('Activar'),
             ),
           ],
@@ -168,31 +195,46 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _biometricAvailable = true;
         _biometricEnabled = true;
       });
 
-      _showMessage('Ingreso biométrico activado correctamente.');
+      _showMessage(
+        'Ingreso biométrico activado correctamente.',
+      );
     } on BiometricException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       _showMessage(error.message);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      _showMessage('No se pudo activar el ingreso biométrico.');
+      _showMessage(
+        'No se pudo activar el ingreso biométrico.',
+      );
     }
   }
 
   Future<void> _loginWithBiometrics() async {
-    if (_loading) return;
+    if (_loading) {
+      return;
+    }
 
-    final enabled = await AuthService.instance.isBiometricEnabled();
+    final enabled =
+        await AuthService.instance.isBiometricEnabled();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (!enabled) {
       _showMessage(
@@ -205,23 +247,32 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
 
     try {
-      final user = await AuthService.instance.loginWithBiometrics();
+      final user =
+          await AuthService.instance.loginWithBiometrics();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       widget.onAuthenticated(user);
     } on BiometricException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       _showMessage(error.message);
     } on ApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       _showMessage(error.message);
 
       await _loadBiometricState();
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       _showMessage(
         'No se pudo iniciar sesión con biometría. Intentá nuevamente.',
@@ -233,11 +284,42 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _openForgotPassword() async {
+    if (_loading) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordPage(
+          initialIdentifier:
+              _userController.text.trim(),
+        ),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    /*
+     * La recuperación puede haber deshabilitado
+     * la biometría porque la contraseña guardada
+     * quedó obsoleta.
+     */
+    await _loadBiometricState();
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
   }
 
@@ -249,15 +331,21 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.navyDeep, AppColors.navy, Color(0xFF00356C)],
+            colors: [
+              AppColors.navyDeep,
+              AppColors.navy,
+              Color(0xFF00356C),
+            ],
           ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(26, 40, 26, 24),
+            padding:
+                const EdgeInsets.fromLTRB(26, 40, 26, 24),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minHeight: MediaQuery.sizeOf(context).height - 88,
+                minHeight:
+                    MediaQuery.sizeOf(context).height - 88,
               ),
               child: Form(
                 key: _formKey,
@@ -265,6 +353,7 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     const RutaGenLogo(),
                     const SizedBox(height: 50),
+
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text.rich(
@@ -273,7 +362,9 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             TextSpan(
                               text: 'Ruta Gen',
-                              style: TextStyle(color: AppColors.cyan),
+                              style: TextStyle(
+                                color: AppColors.cyan,
+                              ),
                             ),
                           ],
                         ),
@@ -284,87 +375,128 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 22),
+
                     TextFormField(
                       controller: _userController,
                       enabled: !_loading,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
+                      keyboardType:
+                          TextInputType.emailAddress,
+                      textInputAction:
+                          TextInputAction.next,
                       autofillHints: const [
                         AutofillHints.username,
                         AutofillHints.email,
                       ],
                       decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.person_outline_rounded),
+                        prefixIcon: Icon(
+                          Icons.person_outline_rounded,
+                        ),
                         hintText: 'DNI o correo',
                       ),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
+                        if (value == null ||
+                            value.trim().isEmpty) {
                           return 'Ingresá tu DNI o correo.';
                         }
 
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 12),
+
                     TextFormField(
                       controller: _passwordController,
                       enabled: !_loading,
                       obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      autofillHints: const [AutofillHints.password],
+                      textInputAction:
+                          TextInputAction.done,
+                      autofillHints: const [
+                        AutofillHints.password,
+                      ],
                       onFieldSubmitted: (_) {
                         if (!_loading) {
                           _login();
                         }
                       },
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                        ),
                         hintText: 'Contraseña',
                         suffixIcon: IconButton(
                           onPressed: _loading
                               ? null
                               : () {
                                   setState(() {
-                                    _obscurePassword = !_obscurePassword;
+                                    _obscurePassword =
+                                        !_obscurePassword;
                                   });
                                 },
                           icon: Icon(
                             _obscurePassword
                                 ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                                : Icons
+                                    .visibility_off_outlined,
                           ),
                         ),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value == null ||
+                            value.isEmpty) {
                           return 'Ingresá tu contraseña.';
                         }
 
                         return null;
                       },
                     ),
-                    const SizedBox(height: 18),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _loading
+                            ? null
+                            : _openForgotPassword,
+                        child: const Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: TextStyle(
+                            color: AppColors.cyan,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
                     FilledButton(
-                      onPressed: _loading ? null : _login,
+                      onPressed:
+                          _loading ? null : _login,
                       child: _loading
                           ? const SizedBox.square(
                               dimension: 22,
-                              child: CircularProgressIndicator(
+                              child:
+                                  CircularProgressIndicator(
                                 strokeWidth: 2.4,
                                 color: Colors.white,
                               ),
                             )
                           : const Text('Ingresar'),
                     ),
+
                     TextButton(
                       onPressed: _loading
                           ? null
                           : () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) => RegisterPage(
-                                    onRegistered: widget.onAuthenticated,
+                                  builder: (_) =>
+                                      RegisterPage(
+                                    onRegistered:
+                                        widget
+                                            .onAuthenticated,
                                   ),
                                 ),
                               );
@@ -373,50 +505,72 @@ class _LoginPageState extends State<LoginPage> {
                         'Crear cuenta',
                         style: TextStyle(
                           color: AppColors.cyan,
-                          decoration: TextDecoration.underline,
-                          decorationColor: AppColors.cyan,
+                          decoration:
+                              TextDecoration.underline,
+                          decorationColor:
+                              AppColors.cyan,
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 10),
+
                     Row(
                       children: [
                         Expanded(
                           child: Divider(
-                            color: Colors.white.withValues(alpha: 0.35),
+                            color: Colors.white.withValues(
+                              alpha: 0.35,
+                            ),
                           ),
                         ),
                         const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                          ),
                           child: Text(
                             'o',
-                            style: TextStyle(color: Colors.white),
+                            style:
+                                TextStyle(color: Colors.white),
                           ),
                         ),
                         Expanded(
                           child: Divider(
-                            color: Colors.white.withValues(alpha: 0.35),
+                            color: Colors.white.withValues(
+                              alpha: 0.35,
+                            ),
                           ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 22),
+
                     OutlinedButton.icon(
-                      onPressed: _loading ? null : _loginWithBiometrics,
-                      icon: const Icon(Icons.fingerprint_rounded),
+                      onPressed: _loading
+                          ? null
+                          : _loginWithBiometrics,
+                      icon: const Icon(
+                        Icons.fingerprint_rounded,
+                      ),
                       label: Text(
                         _biometricEnabled
                             ? 'Ingresar con biometría'
                             : _biometricAvailable
-                            ? 'Activar biometría al ingresar'
-                            : 'Ingresar con biometría',
+                                ? 'Activar biometría al ingresar'
+                                : 'Ingresar con biometría',
                       ),
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54),
-                        foregroundColor: AppColors.cyan,
-                        side: const BorderSide(color: AppColors.blue),
+                        minimumSize:
+                            const Size.fromHeight(54),
+                        foregroundColor:
+                            AppColors.cyan,
+                        side: const BorderSide(
+                          color: AppColors.blue,
+                        ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius:
+                              BorderRadius.circular(14),
                         ),
                       ),
                     ),

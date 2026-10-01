@@ -1,0 +1,49 @@
+RUTA GEN - AJUSTES MANUALES EN MOVIMIENTOS - 30/09/2026
+
+CAMBIO
+El historial de la app antes consultaba cargas y premios. Ahora consulta también
+los ajustes manuales confirmados del cliente, incluidos los que ya existen.
+El ajuste de +1.000 con motivo "Video" aparecerá al actualizar Movimientos.
+No hace falta repetir ese ajuste: sumaría otros 1.000 puntos.
+
+Cada tarjeta muestra:
+- Ajuste manual.
+- Motivo completo.
+- Fecha y hora argentina (UTC-3), independientemente de la zona del emulador.
+- Puntos positivos en verde o negativos en rojo.
+También aparece en la actividad reciente del inicio.
+El orden se calcula por la fecha real del registro. El historial puede seguir
+paginando después de los primeros 100 registros.
+
+APLICAR PRIMERO EL BACKEND
+1. Aplicá el ZIP RutaGen-Backend-Parche-Ajustes-Manuales-2026-09-30.zip.
+2. Reiniciá el backend central de Ruta Gen.
+No hace falta vaciar MongoDB ni crear nuevamente el ajuste.
+
+APLICAR LA APP
+Copiá el contenido de este ZIP sobre la carpeta de la app Flutter actual,
+aceptando reemplazar. Conservá tu configuración de firma y los archivos .env
+si los tenés. No se cambiaron dependencias ni el número de versión.
+
+Desde la carpeta que contiene pubspec.yaml:
+flutter pub get
+flutter test test/manual_adjustments_test.dart
+flutter run -d emulator-5554
+
+Si el emulador tiene otro ID, consultalo con flutter devices.
+Si tenés flutter run abierto, detenelo y volvé a ejecutarlo.
+Abrí Movimientos y deslizá hacia abajo para recargar el historial.
+
+ARCHIVOS CAMBIADOS
+lib/data/models.dart
+lib/data/api_ruta_gen_repository.dart
+lib/features/movements/movements_page.dart
+lib/features/home/home_page.dart
+test/manual_adjustments_test.dart (nuevo)
+
+VALIDACION
+La sintaxis Dart de los archivos modificados fue verificada.
+Las tres nuevas pruebas del backend pasaron, incluyendo autorización y
+selección del cliente autenticado. Flutter no está instalado en el entorno
+de esta revisión: las pruebas Flutter están incluidas pero no se ejecutaron
+ni se generó una APK aquí. Ejecutá el comando flutter test indicado arriba.

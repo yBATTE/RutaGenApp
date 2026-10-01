@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -7,6 +9,7 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/push_notification_service.dart';
 import '../account/account_page.dart';
+import '../draws/draws_page.dart';
 import '../gifts/gift_rewards_page.dart';
 import '../home/home_page.dart';
 import '../movements/movements_page.dart';
@@ -21,18 +24,25 @@ class AppShell extends StatefulWidget {
     required this.repository,
     required this.user,
     required this.onLogout,
+    required this.onAccountDeleted,
   });
 
   final RutaGenRepository repository;
   final UserModel user;
   final VoidCallback onLogout;
+  final VoidCallback onAccountDeleted;
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
+  int _unreadNotifications = 0;
+  bool _loadingNotifications = false;
+  bool _notificationsRefreshPending = false;
+  Timer? _notificationsTimer;
+  StreamSubscription<PushMessage>? _pushSubscription;
 
   late UserModel _currentUser;
   bool _refreshingUser = false;
@@ -41,6 +51,16 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _currentUser = widget.user;
+    WidgetsBinding.instance.addObserver(this);
+    _refreshNotifications();
+    _notificationsTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _refreshNotifications(),
+    );
+    _pushSubscription =
+        PushNotificationService.instance.foregroundMessages.listen((_) {
+      Future.delayed(const Duration(seconds: 2), _refreshNotifications);
+    });
 
     PushNotificationService.instance.actionNotifier
         .addListener(_handlePushAction);
@@ -52,9 +72,55 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notificationsTimer?.cancel();
+    _pushSubscription?.cancel();
     PushNotificationService.instance.actionNotifier
         .removeListener(_handlePushAction);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshNotifications();
+      _refreshCurrentUser();
+    }
+  }
+
+  void _handleSessionExpired() {
+    if (!AuthService.instance.accountDeletionInProgress) widget.onLogout();
+  }
+
+  Future<void> _refreshNotifications() async {
+    if (AuthService.instance.accountDeletionInProgress) return;
+    if (_loadingNotifications) {
+      _notificationsRefreshPending = true;
+      return;
+    }
+    _loadingNotifications = true;
+    try {
+      final response = await ApiClient.instance.get(
+        '/notifications/me',
+        queryParameters: {'limit': '100'},
+      );
+      final data = response['data'];
+      final payload =
+          data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
+      final items = payload['items'];
+      final count = items is List
+          ? items.where((item) => item is Map && item['read'] != true).length
+          : 0;
+      if (mounted) setState(() => _unreadNotifications = count);
+    } catch (_) {
+      // Mantener el último contador si falla la conexión.
+    } finally {
+      _loadingNotifications = false;
+      if (_notificationsRefreshPending && mounted) {
+        _notificationsRefreshPending = false;
+        _refreshNotifications();
+      }
+    }
   }
 
   @override
@@ -64,7 +130,9 @@ class _AppShellState extends State<AppShell> {
     if (oldWidget.user.id != widget.user.id) {
       setState(() {
         _currentUser = widget.user;
+        _unreadNotifications = 0;
       });
+      _refreshNotifications();
     }
   }
 
@@ -86,6 +154,7 @@ class _AppShellState extends State<AppShell> {
    * Consulta nuevamente el usuario en el backend.
    */
   Future<void> _refreshCurrentUser() async {
+    if (AuthService.instance.accountDeletionInProgress) return;
     if (_refreshingUser) {
       return;
     }
@@ -93,8 +162,7 @@ class _AppShellState extends State<AppShell> {
     _refreshingUser = true;
 
     try {
-      final updatedUser =
-          await AuthService.instance.getCurrentUser();
+      final updatedUser = await AuthService.instance.getCurrentUser();
 
       if (!mounted) {
         return;
@@ -108,8 +176,9 @@ class _AppShellState extends State<AppShell> {
         return;
       }
 
+      if (AuthService.instance.accountDeletionInProgress) return;
       if (error.isUnauthorized || error.isForbidden) {
-        widget.onLogout();
+        _handleSessionExpired();
         return;
       }
 
@@ -166,9 +235,10 @@ class _AppShellState extends State<AppShell> {
      * Actualizamos el usuario al entrar en:
      * 0: Inicio
      * 3: Premios
-     * 4: Cuenta
+     * 4: Sorteos
+     * 5: Cuenta
      */
-    if (index == 0 || index == 3 || index == 4) {
+    if (index == 0 || index == 3 || index == 4 || index == 5) {
       _refreshCurrentUser();
     }
   }
@@ -183,12 +253,15 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _openNotifications() {
-    Navigator.of(context).push(
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const NotificationsPage(),
+        builder: (_) => NotificationsPage(
+          onUnreadChanged: _refreshNotifications,
+        ),
       ),
     );
+    _refreshNotifications();
   }
 
   void _openGiftRewards() {
@@ -202,10 +275,10 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _handlePushAction() {
+    if (AuthService.instance.accountDeletionInProgress) return;
     if (!mounted) return;
 
-    final action = PushNotificationService.instance
-        .consumePendingAction();
+    final action = PushNotificationService.instance.consumePendingAction();
     if (action == null) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -243,11 +316,13 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       HomePage(
+        isActive: _index == 0,
         repository: widget.repository,
         user: _currentUser,
         onNavigate: _goTo,
         onRefreshUser: _refreshCurrentUser,
         onOpenNotifications: _openNotifications,
+        unreadNotifications: _unreadNotifications,
         onOpenGiftRewards: _openGiftRewards,
       ),
       StationsPage(
@@ -256,7 +331,7 @@ class _AppShellState extends State<AppShell> {
       MyQrPage(
         repository: widget.repository,
         isActive: _index == 2,
-        onSessionExpired: widget.onLogout,
+        onSessionExpired: _handleSessionExpired,
       ),
       RewardsPage(
         repository: widget.repository,
@@ -270,8 +345,18 @@ class _AppShellState extends State<AppShell> {
         user: _currentUser,
         onUserUpdated: _handleUserUpdated,
         onLogout: widget.onLogout,
+        onAccountDeleted: widget.onAccountDeleted,
       ),
     ];
+
+    // Keep the existing account page last and add the draw tab before it.
+    pages.insert(
+        4,
+        DrawsPage(
+          repository: widget.repository,
+          user: _currentUser,
+          isActive: _index == 4,
+        ));
 
     return Scaffold(
       body: IndexedStack(
@@ -312,6 +397,11 @@ class _AppShellState extends State<AppShell> {
               Icons.card_giftcard_rounded,
             ),
             label: 'Premios',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.emoji_events_outlined),
+            selectedIcon: Icon(Icons.emoji_events_rounded),
+            label: 'Sorteos',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
