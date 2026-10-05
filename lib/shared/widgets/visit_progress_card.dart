@@ -30,10 +30,10 @@ class VisitProgressCard extends StatelessWidget {
     final breakfastName =
         progress.secondStationRewardName?.trim().isNotEmpty == true
             ? progress.secondStationRewardName!.trim()
-            : 'Desayuno';
+            : 'beneficio de 2 estaciones';
     final mealName = progress.thirdStationRewardName?.trim().isNotEmpty == true
         ? progress.thirdStationRewardName!.trim()
-        : 'Almuerzo / cena';
+        : 'beneficio de 3 estaciones';
 
     String message;
     if (progress.mealUnlocked) {
@@ -166,7 +166,8 @@ class VisitProgressCard extends StatelessWidget {
               ],
             ),
           ),
-          if (progress.breakfastUnlocked || progress.mealUnlocked) ...[
+          if ((progress.breakfastUnlocked && !progress.secondStationIsPoints) ||
+              (progress.mealUnlocked && !progress.thirdStationIsPoints)) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,

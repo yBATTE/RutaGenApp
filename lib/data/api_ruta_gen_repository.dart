@@ -293,7 +293,7 @@ class ApiRutaGenRepository
     );
     return Movement(
       id: 'adjustment-${_stringValue(data['id'] ?? data['_id'])}',
-      title: 'Ajuste manual',
+      title: data['source'] == 'VISIT_BONUS' ? 'Puntos por visitas' : 'Ajuste manual',
       subtitle: 'Motivo: $reason',
       date: _dateValue(data['createdAt'] ?? data['completedAt']),
       points: _intValue(data['points']),
@@ -466,12 +466,14 @@ class ApiRutaGenRepository
       ),
       remainingForBreakfast: _intValue(data['remainingForBreakfast']),
       remainingForMeal: _intValue(data['remainingForMeal']),
-      secondStationRewardName: _stringValue(secondReward['name']).isEmpty
-          ? null
-          : _stringValue(secondReward['name']),
-      thirdStationRewardName: _stringValue(thirdReward['name']).isEmpty
-          ? null
-          : _stringValue(thirdReward['name']),
+      secondStationIsPoints: (secondMilestone['status'] == 'ISSUED' ? secondMilestone['type'] : secondSetting['type']) == 'POINTS',
+      secondStationRewardName: (secondMilestone['status'] == 'ISSUED' ? secondMilestone['type'] : secondSetting['type']) == 'POINTS'
+          ? "${_intValue(secondMilestone['status'] == 'ISSUED' ? secondMilestone['points'] : secondSetting['points'])} puntos"
+          : _stringValue(secondReward['name']).isEmpty ? null : _stringValue(secondReward['name']),
+      thirdStationIsPoints: (thirdMilestone['status'] == 'ISSUED' ? thirdMilestone['type'] : thirdSetting['type']) == 'POINTS',
+      thirdStationRewardName: (thirdMilestone['status'] == 'ISSUED' ? thirdMilestone['type'] : thirdSetting['type']) == 'POINTS'
+          ? "${_intValue(thirdMilestone['status'] == 'ISSUED' ? thirdMilestone['points'] : thirdSetting['points'])} puntos"
+          : _stringValue(thirdReward['name']).isEmpty ? null : _stringValue(thirdReward['name']),
     );
   }
 
