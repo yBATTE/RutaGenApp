@@ -77,20 +77,14 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    /*
-     * Intencionalmente no hacemos nada al pasar
-     * a paused/inactive/resumed.
-     *
-     * Antes Ruta Gen bloqueaba la sesión al minimizar
-     * y pedía biometría nuevamente al volver.
-     *
-     * Desde ahora la sesión permanece visible mientras
-     * la aplicación siga abierta en memoria.
-     *
-     * La biometría se solicita nuevamente únicamente
-     * cuando la app es cerrada completamente y vuelve
-     * a iniciarse.
-     */
+    // Reintenta el registro push después de habilitar permisos en Ajustes
+    // o si APNs no entregó el token durante el primer inicio de sesión.
+    // La sesión sigue abierta y no se vuelve a solicitar biometría.
+    if (state == AppLifecycleState.resumed &&
+        _currentUser != null &&
+        !_checkingSession) {
+      unawaited(_bindPushAfterAuthentication());
+    }
   }
 
   /* ============================================================

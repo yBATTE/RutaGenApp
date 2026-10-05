@@ -50,6 +50,7 @@ class PushNotificationService {
   bool _available = false;
   bool _listenersReady = false;
   bool _initializing = false;
+  bool _binding = false;
 
   StreamSubscription<String>? _tokenSubscription;
 
@@ -233,6 +234,10 @@ class PushNotificationService {
   ============================================================ */
 
   Future<void> bindToCurrentUser() async {
+    if (_binding || AuthService.instance.accountDeletionInProgress) return;
+    if (!await _apiClient.hasSession()) return;
+    if (_binding || AuthService.instance.accountDeletionInProgress) return;
+    _binding = true;
     debugPrint('');
     debugPrint('==========================================');
     debugPrint('🔥 PUSH: VINCULANDO DISPOSITIVO');
@@ -370,6 +375,7 @@ class PushNotificationService {
         '$stackTrace',
       );
     } finally {
+      _binding = false;
       debugPrint('==========================================');
       debugPrint('');
     }
