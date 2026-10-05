@@ -36,7 +36,11 @@ class VisitProgressCard extends StatelessWidget {
         : 'beneficio de 3 estaciones';
 
     String message;
-    if (progress.mealUnlocked) {
+    if (progress.breakfastUnlocked && !progress.thirdStationEnabled) {
+      message = '¡Ganaste $breakfastName por visitar 2 estaciones este mes!';
+    } else if (!progress.secondStationEnabled && !progress.mealUnlocked) {
+      message = 'Visitá 3 estaciones distintas este mes para ganar $mealName.';
+    } else if (progress.mealUnlocked) {
       message = '¡Completaste las 3 estaciones y desbloqueaste $mealName!';
     } else if (progress.breakfastUnlocked) {
       message = progress.remainingForMeal == 1

@@ -201,6 +201,8 @@ class VisitProgress {
     required this.thirdStationStatus,
     required this.remainingForBreakfast,
     required this.remainingForMeal,
+    this.secondStationEnabled = true,
+    this.thirdStationEnabled = true,
     this.secondStationIsPoints = false,
     this.thirdStationIsPoints = false,
     this.secondStationRewardName,
@@ -215,6 +217,8 @@ class VisitProgress {
   final String thirdStationStatus;
   final int remainingForBreakfast;
   final int remainingForMeal;
+  final bool secondStationEnabled;
+  final bool thirdStationEnabled;
   final bool secondStationIsPoints;
   final bool thirdStationIsPoints;
   final String? secondStationRewardName;

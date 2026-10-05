@@ -466,6 +466,8 @@ class ApiRutaGenRepository
       ),
       remainingForBreakfast: _intValue(data['remainingForBreakfast']),
       remainingForMeal: _intValue(data['remainingForMeal']),
+      secondStationEnabled: secondSetting['type'] != 'NONE',
+      thirdStationEnabled: thirdSetting['type'] != 'NONE',
       secondStationIsPoints: (secondMilestone['status'] == 'ISSUED' ? secondMilestone['type'] : secondSetting['type']) == 'POINTS',
       secondStationRewardName: (secondMilestone['status'] == 'ISSUED' ? secondMilestone['type'] : secondSetting['type']) == 'POINTS'
           ? "${_intValue(secondMilestone['status'] == 'ISSUED' ? secondMilestone['points'] : secondSetting['points'])} puntos"
