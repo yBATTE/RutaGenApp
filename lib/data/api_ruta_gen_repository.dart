@@ -7,7 +7,10 @@ import 'points_promotion.dart';
 import 'ruta_gen_repository.dart';
 
 class ApiRutaGenRepository
-    implements RutaGenRepository, TemporaryQrRepository, PointsPromotionRepository {
+    implements
+        RutaGenRepository,
+        TemporaryQrRepository,
+        PointsPromotionRepository {
   ApiRutaGenRepository({
     ApiClient? apiClient,
   }) : _apiClient = apiClient ?? ApiClient.instance;
@@ -36,37 +39,56 @@ class ApiRutaGenRepository
       final item = _asMap(raw);
       final result = _asMap(item['result']);
       final winner = _asMap(result['winner']);
-      final paths = item['imagePaths'] is List ? item['imagePaths'] as List : const [];
+      final paths =
+          item['imagePaths'] is List ? item['imagePaths'] as List : const [];
       return DrawEvent(
-        id: _stringValue(item['id']), title: _stringValue(item['title']),
-        prizeName: _stringValue(item['prizeName']), description: _stringValue(item['description']),
-        rules: _stringValue(item['rules']), conditions: _stringValue(item['conditions']),
+        id: _stringValue(item['id']),
+        title: _stringValue(item['title']),
+        prizeName: _stringValue(item['prizeName']),
+        description: _stringValue(item['description']),
+        rules: _stringValue(item['rules']),
+        conditions: _stringValue(item['conditions']),
         metric: _stringValue(item['metric'], fallback: 'POINTS'),
         qualifyingCount: _intValue(item['qualifyingCount']),
-        status: _stringValue(item['status']), startAt: _nullableDateValue(item['startAt']),
-        endAt: _nullableDateValue(item['endAt']), drawAt: _nullableDateValue(item['drawAt']),
+        status: _stringValue(item['status']),
+        startAt: _nullableDateValue(item['startAt']),
+        endAt: _nullableDateValue(item['endAt']),
+        drawAt: _nullableDateValue(item['drawAt']),
         imageUrls: paths.map(_rewardImageUrl).whereType<String>().toList(),
-        winnerName: winner['name'] == null ? null : _stringValue(winner['name']),
+        winnerName:
+            winner['name'] == null ? null : _stringValue(winner['name']),
       );
     }).toList();
   }
 
   @override
   Future<MonthlyRanking> getDrawEventRanking(String id) async {
-    final response = await _apiClient.get('/draws/events/${Uri.encodeComponent(id)}');
+    final response =
+        await _apiClient.get('/draws/events/${Uri.encodeComponent(id)}');
     final data = _asMap(response['data']);
     final mine = _asMap(data['me']);
     final items = data['top'] is List ? data['top'] as List : const [];
     return MonthlyRanking(
-      month: '', configured: true, status: _stringValue(data['status']),
+      month: '',
+      configured: true,
+      status: _stringValue(data['status']),
       prizeName: _stringValue(data['prizeName']),
-      cycleStart: _nullableDateValue(data['startAt']), cycleEnd: _nullableDateValue(data['endAt']),
-      top: items.map((raw) { final entry = _asMap(raw); return RankingEntry(
-        position: _intValue(entry['position']), name: _stringValue(entry['name']),
-        points: _intValue(entry['points']), liters: _doubleValue(entry['liters']), isMe: entry['isMe'] == true,
-      ); }).toList(),
+      cycleStart: _nullableDateValue(data['startAt']),
+      cycleEnd: _nullableDateValue(data['endAt']),
+      top: items.map((raw) {
+        final entry = _asMap(raw);
+        return RankingEntry(
+          position: _intValue(entry['position']),
+          name: _stringValue(entry['name']),
+          points: _intValue(entry['points']),
+          liters: _doubleValue(entry['liters']),
+          isMe: entry['isMe'] == true,
+        );
+      }).toList(),
       position: mine['position'] == null ? null : _intValue(mine['position']),
-      points: _intValue(mine['points']), liters: _doubleValue(mine['liters']), eligible: mine['eligible'] == true,
+      points: _intValue(mine['points']),
+      liters: _doubleValue(mine['liters']),
+      eligible: mine['eligible'] == true,
     );
   }
 
@@ -293,7 +315,9 @@ class ApiRutaGenRepository
     );
     return Movement(
       id: 'adjustment-${_stringValue(data['id'] ?? data['_id'])}',
-      title: data['source'] == 'VISIT_BONUS' ? 'Puntos por visitas' : 'Ajuste manual',
+      title: data['source'] == 'VISIT_BONUS'
+          ? 'Puntos por visitas'
+          : 'Ajuste manual',
       subtitle: 'Motivo: $reason',
       date: _dateValue(data['createdAt'] ?? data['completedAt']),
       points: _intValue(data['points']),
@@ -415,9 +439,10 @@ class ApiRutaGenRepository
       campaignName: _stringValue(campaign['name']).isEmpty
           ? null
           : _stringValue(campaign['name']),
-      reservationStationName: _stringValue(data['reservationStationName']).isEmpty
-          ? null
-          : _stringValue(data['reservationStationName']),
+      reservationStationName:
+          _stringValue(data['reservationStationName']).isEmpty
+              ? null
+              : _stringValue(data['reservationStationName']),
       issuedAt: _dateValue(data['issuedAt'] ?? data['createdAt']),
       expiresAt: _nullableDateValue(data['expiresAt']),
       redeemedAt: _nullableDateValue(data['redeemedAt']),
@@ -445,7 +470,8 @@ class ApiRutaGenRepository
             .map(
               (item) => VisitStation(
                 slug: _stringValue(item['slug']),
-                name: _stringValue(item['name'], fallback: _stringValue(item['slug'])),
+                name: _stringValue(item['name'],
+                    fallback: _stringValue(item['slug'])),
               ),
             )
             .toList()
@@ -468,14 +494,30 @@ class ApiRutaGenRepository
       remainingForMeal: _intValue(data['remainingForMeal']),
       secondStationEnabled: secondSetting['type'] != 'NONE',
       thirdStationEnabled: thirdSetting['type'] != 'NONE',
-      secondStationIsPoints: (secondMilestone['status'] == 'ISSUED' ? secondMilestone['type'] : secondSetting['type']) == 'POINTS',
-      secondStationRewardName: (secondMilestone['status'] == 'ISSUED' ? secondMilestone['type'] : secondSetting['type']) == 'POINTS'
+      secondStationIsPoints: (secondMilestone['status'] == 'ISSUED'
+              ? secondMilestone['type']
+              : secondSetting['type']) ==
+          'POINTS',
+      secondStationRewardName: (secondMilestone['status'] == 'ISSUED'
+                  ? secondMilestone['type']
+                  : secondSetting['type']) ==
+              'POINTS'
           ? "${_intValue(secondMilestone['status'] == 'ISSUED' ? secondMilestone['points'] : secondSetting['points'])} puntos"
-          : _stringValue(secondReward['name']).isEmpty ? null : _stringValue(secondReward['name']),
-      thirdStationIsPoints: (thirdMilestone['status'] == 'ISSUED' ? thirdMilestone['type'] : thirdSetting['type']) == 'POINTS',
-      thirdStationRewardName: (thirdMilestone['status'] == 'ISSUED' ? thirdMilestone['type'] : thirdSetting['type']) == 'POINTS'
+          : _stringValue(secondReward['name']).isEmpty
+              ? null
+              : _stringValue(secondReward['name']),
+      thirdStationIsPoints: (thirdMilestone['status'] == 'ISSUED'
+              ? thirdMilestone['type']
+              : thirdSetting['type']) ==
+          'POINTS',
+      thirdStationRewardName: (thirdMilestone['status'] == 'ISSUED'
+                  ? thirdMilestone['type']
+                  : thirdSetting['type']) ==
+              'POINTS'
           ? "${_intValue(thirdMilestone['status'] == 'ISSUED' ? thirdMilestone['points'] : thirdSetting['points'])} puntos"
-          : _stringValue(thirdReward['name']).isEmpty ? null : _stringValue(thirdReward['name']),
+          : _stringValue(thirdReward['name']).isEmpty
+              ? null
+              : _stringValue(thirdReward['name']),
     );
   }
 
@@ -570,7 +612,8 @@ class ApiRutaGenRepository
     final safeLimit = limit < 1 ? 1 : (limit > 100 ? 100 : limit);
     final requestedCount = safePage * safeLimit;
     final responses = await Future.wait([
-      _movementSource('/loads/me', requestedCount, filters: {'status': 'CONFIRMED'}),
+      _movementSource('/loads/me', requestedCount,
+          filters: {'status': 'CONFIRMED'}),
       _movementSource('/rewards/me', requestedCount),
       _movementSource('/users/me/point-adjustments', requestedCount),
     ]);
@@ -708,7 +751,8 @@ class ApiRutaGenRepository
   @override
   Future<String> redeemReward(String rewardId) async {
     throw const ApiException(
-      message: 'El canje debe ser confirmado por el Vendedor de Playa desde su panel.',
+      message:
+          'El canje debe ser confirmado por el Vendedor de Playa desde su panel.',
     );
   }
 }

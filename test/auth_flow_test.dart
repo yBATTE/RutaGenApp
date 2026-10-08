@@ -66,8 +66,9 @@ void main() {
       final api = ApiClient.forTesting(
         httpClient: MockClient((request) async {
           calls.add(request.url.path);
-          if (request.url.path.endsWith('/register'))
+          if (request.url.path.endsWith('/register')) {
             return payload({'user': customer}, 201);
+          }
           return payload({'user': customer, 'accessToken': 'session-test'});
         }),
       );

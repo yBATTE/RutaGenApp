@@ -380,20 +380,23 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Column(
                     children: [
                       if (_step == 1)
-                        CheckboxListTile(
-                          value: _accepted,
-                          onChanged: _loading
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _accepted = value ?? false;
-                                  });
-                                },
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: const Text(
-                            'Acepto los términos y condiciones',
-                            style: TextStyle(fontSize: 14),
+                        Material(
+                          color: Colors.transparent,
+                          child: CheckboxListTile(
+                            value: _accepted,
+                            onChanged: _loading
+                                ? null
+                                : (value) {
+                                    setState(() {
+                                      _accepted = value ?? false;
+                                    });
+                                  },
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: const Text(
+                              'Acepto los términos y condiciones',
+                              style: TextStyle(fontSize: 14),
+                            ),
                           ),
                         ),
                       FilledButton(
@@ -410,8 +413,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                 _step == 0
                                     ? 'Continuar'
                                     : _accountCreated
-                                    ? 'Ingresar a mi cuenta'
-                                    : 'Crear mi cuenta',
+                                        ? 'Ingresar a mi cuenta'
+                                        : 'Crear mi cuenta',
                               ),
                       ),
                     ],

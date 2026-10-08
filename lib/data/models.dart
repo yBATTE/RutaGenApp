@@ -9,7 +9,12 @@ enum MovementType {
 }
 
 class RankingEntry {
-  const RankingEntry({required this.position, required this.name, required this.points, required this.isMe, this.liters = 0});
+  const RankingEntry(
+      {required this.position,
+      required this.name,
+      required this.points,
+      required this.isMe,
+      this.liters = 0});
   final int position;
   final String name;
   final int points;
@@ -18,11 +23,29 @@ class RankingEntry {
 }
 
 class DrawEvent {
-  const DrawEvent({required this.id, required this.title, required this.prizeName,
-    required this.status, required this.startAt, required this.endAt, required this.drawAt,
-    this.description = '', this.rules = '', this.conditions = '', this.qualifyingCount = 20,
-    this.imageUrls = const [], this.winnerName, this.metric = 'POINTS'});
-  final String id, title, prizeName, status, description, rules, conditions, metric;
+  const DrawEvent(
+      {required this.id,
+      required this.title,
+      required this.prizeName,
+      required this.status,
+      required this.startAt,
+      required this.endAt,
+      required this.drawAt,
+      this.description = '',
+      this.rules = '',
+      this.conditions = '',
+      this.qualifyingCount = 20,
+      this.imageUrls = const [],
+      this.winnerName,
+      this.metric = 'POINTS'});
+  final String id,
+      title,
+      prizeName,
+      status,
+      description,
+      rules,
+      conditions,
+      metric;
   final int qualifyingCount;
   final DateTime? startAt, endAt, drawAt;
   final List<String> imageUrls;
@@ -30,8 +53,18 @@ class DrawEvent {
 }
 
 class MonthlyRanking {
-  const MonthlyRanking({required this.month, required this.top, required this.position, required this.points, required this.eligible,
-    this.configured = true, this.status = 'OPEN', this.prizeName = '', this.cycleStart, this.cycleEnd, this.liters = 0});
+  const MonthlyRanking(
+      {required this.month,
+      required this.top,
+      required this.position,
+      required this.points,
+      required this.eligible,
+      this.configured = true,
+      this.status = 'OPEN',
+      this.prizeName = '',
+      this.cycleStart,
+      this.cycleEnd,
+      this.liters = 0});
   final String month;
   final bool configured;
   final String status;
@@ -100,7 +133,9 @@ class Reward {
 
   List<String> get gallery => imageUrls.isNotEmpty
       ? imageUrls
-      : imageUrl == null || imageUrl!.isEmpty ? const [] : [imageUrl!];
+      : imageUrl == null || imageUrl!.isEmpty
+          ? const []
+          : [imageUrl!];
 
   bool get hasStock => stock > 0;
 }
@@ -224,11 +259,9 @@ class VisitProgress {
   final String? secondStationRewardName;
   final String? thirdStationRewardName;
 
-  bool get breakfastUnlocked =>
-      secondStationStatus.toUpperCase() == 'ISSUED';
+  bool get breakfastUnlocked => secondStationStatus.toUpperCase() == 'ISSUED';
 
-  bool get mealUnlocked =>
-      thirdStationStatus.toUpperCase() == 'ISSUED';
+  bool get mealUnlocked => thirdStationStatus.toUpperCase() == 'ISSUED';
 }
 
 class Movement {

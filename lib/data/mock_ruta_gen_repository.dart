@@ -19,10 +19,19 @@ class MockRutaGenRepository implements RutaGenRepository {
     return MonthlyRanking(
       prizeName: type == 'BIKE' ? 'Bicicleta' : 'Moto',
       cycleStart: now,
-      cycleEnd: DateTime(now.year, now.month + (type == 'BIKE' ? 1 : 6), now.day),
+      cycleEnd:
+          DateTime(now.year, now.month + (type == 'BIKE' ? 1 : 6), now.day),
       month: '${now.year}-${now.month.toString().padLeft(2, '0')}',
-      top: List.generate(20, (i) => RankingEntry(position: i + 1, name: 'Participante ${i + 1}', points: 420 - i * 13, isMe: false)),
-      position: 27, points: 36, eligible: false,
+      top: List.generate(
+          20,
+          (i) => RankingEntry(
+              position: i + 1,
+              name: 'Participante ${i + 1}',
+              points: 420 - i * 13,
+              isMe: false)),
+      position: 27,
+      points: 36,
+      eligible: false,
     );
   }
 
@@ -60,7 +69,6 @@ class MockRutaGenRepository implements RutaGenRepository {
     ];
   }
 
-
   @override
   Future<List<GiftReward>> getGiftRewards({
     String? status,
@@ -92,7 +100,8 @@ class MockRutaGenRepository implements RutaGenRepository {
     return const VisitProgress(
       monthKey: '2026-09',
       visitedStations: [
-        VisitStation(slug: 'combustibles-canning-1', name: 'Combustibles Canning 1'),
+        VisitStation(
+            slug: 'combustibles-canning-1', name: 'Combustibles Canning 1'),
         VisitStation(slug: 'catania', name: 'Catania'),
       ],
       stationCount: 2,
@@ -131,9 +140,8 @@ class MockRutaGenRepository implements RutaGenRepository {
 
     final start = (page - 1) * limit;
     if (start >= movements.length) return const [];
-    final end = (start + limit) > movements.length
-        ? movements.length
-        : start + limit;
+    final end =
+        (start + limit) > movements.length ? movements.length : start + limit;
     return movements.sublist(start, end);
   }
 

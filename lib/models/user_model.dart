@@ -71,13 +71,11 @@ class UserModel {
   }
 
   String get initials {
-    final firstInitial = firstName.trim().isNotEmpty
-        ? firstName.trim()[0].toUpperCase()
-        : '';
+    final firstInitial =
+        firstName.trim().isNotEmpty ? firstName.trim()[0].toUpperCase() : '';
 
-    final lastInitial = lastName.trim().isNotEmpty
-        ? lastName.trim()[0].toUpperCase()
-        : '';
+    final lastInitial =
+        lastName.trim().isNotEmpty ? lastName.trim()[0].toUpperCase() : '';
 
     return '$firstInitial$lastInitial';
   }
@@ -249,8 +247,7 @@ class UserModel {
       stationSlug: stationSlug ?? this.stationSlug,
       stationName: stationName ?? this.stationName,
       pointsBalance: pointsBalance ?? this.pointsBalance,
-      lifetimePointsEarned:
-          lifetimePointsEarned ?? this.lifetimePointsEarned,
+      lifetimePointsEarned: lifetimePointsEarned ?? this.lifetimePointsEarned,
       lifetimePointsRedeemed:
           lifetimePointsRedeemed ?? this.lifetimePointsRedeemed,
       qrVersion: qrVersion ?? this.qrVersion,
@@ -263,8 +260,7 @@ class UserModel {
       identityVerifiedStationName:
           identityVerifiedStationName ?? this.identityVerifiedStationName,
       qrCreatedAt: qrCreatedAt ?? this.qrCreatedAt,
-      acceptedTermsAt:
-          acceptedTermsAt ?? this.acceptedTermsAt,
+      acceptedTermsAt: acceptedTermsAt ?? this.acceptedTermsAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -334,8 +330,7 @@ class UserModel {
       final longValue = value[r'$numberLong'];
 
       return double.tryParse(
-            (decimalValue ?? intValue ?? longValue ?? '0')
-                .toString(),
+            (decimalValue ?? intValue ?? longValue ?? '0').toString(),
           ) ??
           0;
     }
@@ -361,8 +356,7 @@ class UserModel {
     }
 
     if (value is Map<String, dynamic>) {
-      final number =
-          value[r'$numberInt'] ?? value[r'$numberLong'];
+      final number = value[r'$numberInt'] ?? value[r'$numberLong'];
 
       return int.tryParse(number?.toString() ?? '');
     }

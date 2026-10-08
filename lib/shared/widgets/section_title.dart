@@ -14,9 +14,12 @@ class SectionTitle extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.ink)),
-        if (action != null)
-          TextButton(onPressed: onTap, child: Text(action!)),
+        Text(title,
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink)),
+        if (action != null) TextButton(onPressed: onTap, child: Text(action!)),
       ],
     );
   }

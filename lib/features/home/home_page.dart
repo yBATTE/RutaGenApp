@@ -82,14 +82,11 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _refresh() async {
-    final movements =
-        widget.repository.getMovements();
+    final movements = widget.repository.getMovements();
 
-    final news =
-        widget.repository.getNews(limit: 5);
+    final news = widget.repository.getNews(limit: 5);
 
-    final visitProgress =
-        widget.repository.getVisitProgress();
+    final visitProgress = widget.repository.getVisitProgress();
 
     setState(() {
       _promotionRefreshVersion++;
@@ -113,8 +110,7 @@ class _HomePageState extends State<HomePage>
 
     final parts = text.split('.');
 
-    final integerPart =
-        parts.first.replaceAllMapped(
+    final integerPart = parts.first.replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
       (_) => '.',
     );
@@ -150,14 +146,12 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFFF5F7FA),
       body: RefreshIndicator(
         onRefresh: _refresh,
         color: AppColors.blue,
         child: CustomScrollView(
-          physics:
-              const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverAppBar(
               systemOverlayStyle: AppTheme.darkBackgroundOverlay,
@@ -186,7 +180,8 @@ class _HomePageState extends State<HomePage>
                             builder: (_, child) {
                               final t = _bellController.value;
                               final angle = t < .55
-                                  ? .18 * math.sin(t * math.pi * 9) *
+                                  ? .18 *
+                                      math.sin(t * math.pi * 9) *
                                       (1 - t / .55)
                                   : 0.0;
                               return Transform.rotate(
@@ -205,12 +200,14 @@ class _HomePageState extends State<HomePage>
                             child: Container(
                               constraints: const BoxConstraints(minWidth: 18),
                               height: 18,
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE73454),
                                 borderRadius: BorderRadius.circular(9),
-                                border: Border.all(color: AppColors.navy, width: 1.5),
+                                border: Border.all(
+                                    color: AppColors.navy, width: 1.5),
                               ),
                               child: Text(
                                 widget.unreadNotifications > 99
@@ -247,8 +244,7 @@ class _HomePageState extends State<HomePage>
               ),
             ),
             SliverPadding(
-              padding:
-                  const EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 18,
                 22,
                 18,
@@ -261,8 +257,7 @@ class _HomePageState extends State<HomePage>
                     style: const TextStyle(
                       color: AppColors.ink,
                       fontSize: 26,
-                      fontWeight:
-                          FontWeight.w900,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -282,12 +277,10 @@ class _HomePageState extends State<HomePage>
                   ],
                   _PointsCard(
                     user: widget.user,
-                    formattedPoints:
-                        _formatPoints(
+                    formattedPoints: _formatPoints(
                       widget.user.pointsBalance,
                     ),
-                    onRewardsTap: () =>
-                        widget.onNavigate(3),
+                    onRewardsTap: () => widget.onNavigate(3),
                   ),
                   PointsPromotionBanner(
                     repository: widget.repository,
@@ -299,11 +292,9 @@ class _HomePageState extends State<HomePage>
                     children: [
                       Expanded(
                         child: _QuickAction(
-                          icon: Icons
-                              .qr_code_2_rounded,
+                          icon: Icons.qr_code_2_rounded,
                           label: 'Mi QR',
-                          onTap: () =>
-                              widget.onNavigate(
+                          onTap: () => widget.onNavigate(
                             2,
                           ),
                         ),
@@ -311,11 +302,9 @@ class _HomePageState extends State<HomePage>
                       const SizedBox(width: 10),
                       Expanded(
                         child: _QuickAction(
-                          icon: Icons
-                              .card_giftcard_rounded,
+                          icon: Icons.card_giftcard_rounded,
                           label: 'Premios',
-                          onTap: () =>
-                              widget.onNavigate(
+                          onTap: () => widget.onNavigate(
                             3,
                           ),
                         ),
@@ -323,8 +312,7 @@ class _HomePageState extends State<HomePage>
                       const SizedBox(width: 10),
                       Expanded(
                         child: _QuickAction(
-                          icon: Icons
-                              .history_rounded,
+                          icon: Icons.history_rounded,
                           label: 'Movimientos',
                           onTap: _openMovements,
                         ),
@@ -361,69 +349,48 @@ class _HomePageState extends State<HomePage>
                   const SizedBox(height: 10),
                   FutureBuilder<List<Movement>>(
                     future: _movements,
-                    builder:
-                        (context, snapshot) {
-                      if (snapshot
-                              .connectionState ==
-                          ConnectionState.waiting) {
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const SizedBox(
                           height: 130,
                           child: Center(
-                            child:
-                                CircularProgressIndicator(),
+                            child: CircularProgressIndicator(),
                           ),
                         );
                       }
 
                       if (snapshot.hasError) {
                         return _MessageCard(
-                          icon: Icons
-                              .cloud_off_rounded,
-                          title:
-                              'No pudimos cargar tus movimientos',
+                          icon: Icons.cloud_off_rounded,
+                          title: 'No pudimos cargar tus movimientos',
                           message:
                               'Deslizá hacia abajo para volver a intentar.',
                           onTap: _refresh,
                         );
                       }
 
-                      final movements =
-                          snapshot.data ?? [];
+                      final movements = snapshot.data ?? [];
 
                       if (movements.isEmpty) {
                         return const _MessageCard(
-                          icon: Icons
-                              .receipt_long_outlined,
-                          title:
-                              'Todavía no tenés movimientos',
-                          message:
-                              'Tus cargas y canjes aparecerán acá.',
+                          icon: Icons.receipt_long_outlined,
+                          title: 'Todavía no tenés movimientos',
+                          message: 'Tus cargas y canjes aparecerán acá.',
                         );
                       }
 
-                      final recentMovements =
-                          movements
-                              .take(3)
-                              .toList();
+                      final recentMovements = movements.take(3).toList();
 
                       return Column(
                         children: List.generate(
                           recentMovements.length,
                           (index) => Padding(
-                            padding:
-                                EdgeInsets.only(
-                              bottom: index ==
-                                      recentMovements
-                                              .length -
-                                          1
-                                  ? 0
-                                  : 10,
+                            padding: EdgeInsets.only(
+                              bottom:
+                                  index == recentMovements.length - 1 ? 0 : 10,
                             ),
-                            child:
-                                _LatestMovementCard(
-                              movement:
-                                  recentMovements[
-                                      index],
+                            child: _LatestMovementCard(
+                              movement: recentMovements[index],
                             ),
                           ),
                         ),
@@ -431,77 +398,57 @@ class _HomePageState extends State<HomePage>
                     },
                   ),
                   const SizedBox(height: 26),
-                  SectionTitle('Novedades'),
+                  const SectionTitle('Novedades'),
                   const SizedBox(height: 10),
                   FutureBuilder<List<NewsItem>>(
                     future: _news,
-                    builder:
-                        (context, snapshot) {
-                      if (snapshot
-                              .connectionState ==
-                          ConnectionState.waiting) {
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const SizedBox(
                           height: 250,
                           child: Center(
-                            child:
-                                CircularProgressIndicator(),
+                            child: CircularProgressIndicator(),
                           ),
                         );
                       }
 
                       if (snapshot.hasError) {
                         return _MessageCard(
-                          icon: Icons
-                              .cloud_off_rounded,
-                          title:
-                              'No pudimos cargar las novedades',
-                          message:
-                              'Deslizá hacia abajo para reintentar.',
+                          icon: Icons.cloud_off_rounded,
+                          title: 'No pudimos cargar las novedades',
+                          message: 'Deslizá hacia abajo para reintentar.',
                           onTap: _refresh,
                         );
                       }
 
-                      final items =
-                          snapshot.data ?? [];
+                      final items = snapshot.data ?? [];
 
                       if (items.isEmpty) {
                         return const _MessageCard(
-                          icon: Icons
-                              .campaign_outlined,
-                          title:
-                              'No hay novedades publicadas',
-                          message:
-                              'Cuando tengamos algo nuevo, aparecerá acá.',
+                          icon: Icons.campaign_outlined,
+                          title: 'No hay novedades publicadas',
+                          message: 'Cuando tengamos algo nuevo, aparecerá acá.',
                         );
                       }
 
                       return SizedBox(
                         height: 285,
-                        child:
-                            ListView.separated(
-                          scrollDirection:
-                              Axis.horizontal,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
                           itemCount: items.length,
-                          separatorBuilder:
-                              (_, __) =>
-                                  const SizedBox(
+                          separatorBuilder: (_, __) => const SizedBox(
                             width: 12,
                           ),
-                          itemBuilder:
-                              (context, index) {
-                            final width =
-                                MediaQuery.sizeOf(
+                          itemBuilder: (context, index) {
+                            final width = MediaQuery.sizeOf(
                               context,
                             ).width;
 
                             return SizedBox(
-                              width: width >= 700
-                                  ? 360
-                                  : width - 62,
+                              width: width >= 700 ? 360 : width - 62,
                               child: _NewsCard(
                                 item: items[index],
-                                onTap: () =>
-                                    _openNewsDetail(
+                                onTap: () => _openNewsDetail(
                                   items[index],
                                 ),
                               ),
@@ -534,8 +481,7 @@ class _PointsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final memberCode =
-        user.memberCode?.trim();
+    final memberCode = user.memberCode?.trim();
 
     return Container(
       width: double.infinity,
@@ -550,12 +496,10 @@ class _PointsCard extends StatelessWidget {
             Color(0xFF0878C9),
           ],
         ),
-        borderRadius:
-            BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: AppColors.navy
-                .withValues(alpha: 0.20),
+            color: AppColors.navy.withValues(alpha: 0.20),
             blurRadius: 22,
             offset: const Offset(0, 9),
           ),
@@ -571,8 +515,7 @@ class _PointsCard extends StatelessWidget {
               height: 115,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white
-                    .withValues(alpha: 0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -584,8 +527,7 @@ class _PointsCard extends StatelessWidget {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.cyan
-                    .withValues(alpha: 0.08),
+                color: AppColors.cyan.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -593,16 +535,14 @@ class _PointsCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'PUNTOS DISPONIBLES',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 11,
-                        fontWeight:
-                            FontWeight.w800,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: 0.7,
                       ),
                     ),
@@ -612,52 +552,41 @@ class _PointsCard extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 34,
-                        fontWeight:
-                            FontWeight.w900,
+                        fontWeight: FontWeight.w900,
                         height: 1.05,
                       ),
                     ),
                     const SizedBox(height: 9),
                     Text(
-                      memberCode != null &&
-                              memberCode.isNotEmpty
+                      memberCode != null && memberCode.isNotEmpty
                           ? 'Socio $memberCode'
                           : 'Usá tus puntos para canjear premios',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
-                        fontWeight:
-                            FontWeight.w600,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: onRewardsTap,
-                      style:
-                          FilledButton.styleFrom(
-                        backgroundColor:
-                            Colors.white,
-                        foregroundColor:
-                            AppColors.navy,
-                        padding:
-                            const EdgeInsets
-                                .symmetric(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.navy,
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 10,
                         ),
-                        visualDensity:
-                            VisualDensity.compact,
+                        visualDensity: VisualDensity.compact,
                       ),
                       icon: const Icon(
-                        Icons
-                            .card_giftcard_rounded,
+                        Icons.card_giftcard_rounded,
                         size: 18,
                       ),
                       label: const Text(
                         'Ver premios',
                         style: TextStyle(
-                          fontWeight:
-                              FontWeight.w800,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -667,17 +596,13 @@ class _PointsCard extends StatelessWidget {
               const SizedBox(width: 14),
               CircleAvatar(
                 radius: 32,
-                backgroundColor:
-                    const Color(0xFF0A66C7),
+                backgroundColor: const Color(0xFF0A66C7),
                 child: Text(
-                  user.initials.isEmpty
-                      ? 'RG'
-                      : user.initials,
+                  user.initials.isEmpty ? 'RG' : user.initials,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
-                    fontWeight:
-                        FontWeight.w900,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
@@ -741,8 +666,7 @@ class _GiftShortcut extends StatelessWidget {
   }
 }
 
-class _LatestMovementCard
-    extends StatelessWidget {
+class _LatestMovementCard extends StatelessWidget {
   const _LatestMovementCard({
     required this.movement,
   });
@@ -752,10 +676,9 @@ class _LatestMovementCard
   String _formatDecimal(double? value) {
     if (value == null) return '';
 
-    final text =
-        value == value.roundToDouble()
-            ? value.toInt().toString()
-            : value.toStringAsFixed(1);
+    final text = value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
 
     return text.replaceAll('.', ',');
   }
@@ -771,34 +694,24 @@ class _LatestMovementCard
       return '${movement.subtitle}\n$timestamp';
     }
 
-    final station =
-        movement.stationName?.trim();
+    final station = movement.stationName?.trim();
 
-    final item =
-        movement.productName?.trim();
+    final item = movement.productName?.trim();
 
-    if (movement.type == MovementType.redemption ||
-        movement.isGift) {
+    if (movement.type == MovementType.redemption || movement.isGift) {
       return [
-        if (station != null &&
-            station.isNotEmpty)
-          station,
-        if (item != null && item.isNotEmpty)
-          item,
+        if (station != null && station.isNotEmpty) station,
+        if (item != null && item.isNotEmpty) item,
       ].join('\n');
     }
 
     final loadData = <String>[
-      if (item != null && item.isNotEmpty)
-        item,
-      if (movement.liters != null)
-        '${_formatDecimal(movement.liters)} L',
+      if (item != null && item.isNotEmpty) item,
+      if (movement.liters != null) '${_formatDecimal(movement.liters)} L',
     ].join(' • ');
 
     return [
-      if (station != null &&
-          station.isNotEmpty)
-        station,
+      if (station != null && station.isNotEmpty) station,
       if (loadData.isNotEmpty) loadData,
     ].join('\n');
   }
@@ -811,8 +724,7 @@ class _LatestMovementCard
     return Card(
       child: InkWell(
         onTap: () {},
-        borderRadius:
-            BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Row(
@@ -833,34 +745,30 @@ class _LatestMovementCard
                   movement.type == MovementType.adjustment
                       ? Icons.tune_rounded
                       : movement.type == MovementType.load
-                      ? Icons.local_gas_station_rounded
-                      : movement.type == MovementType.visitBonus
-                          ? Icons.route_rounded
-                          : Icons.card_giftcard_rounded,
+                          ? Icons.local_gas_station_rounded
+                          : movement.type == MovementType.visitBonus
+                              ? Icons.route_rounded
+                              : Icons.card_giftcard_rounded,
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       movement.title,
                       maxLines: 1,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontWeight:
-                            FontWeight.w800,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _details(),
                       maxLines: 2,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.muted,
                         fontSize: 13,
@@ -927,51 +835,40 @@ class _NewsCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: SizedBox(
                 width: double.infinity,
                 child: CachedNetworkImage(
-                  imageUrl:
-                      item.thumbnailUrl,
+                  imageUrl: item.thumbnailUrl,
                   fit: BoxFit.cover,
-                  fadeInDuration:
-                      const Duration(
+                  fadeInDuration: const Duration(
                     milliseconds: 180,
                   ),
                   memCacheWidth: 900,
                   maxWidthDiskCache: 1200,
-                  placeholder:
-                      (context, url) {
+                  placeholder: (context, url) {
                     return const ColoredBox(
-                      color:
-                          Color(0xFFE8F3FF),
+                      color: Color(0xFFE8F3FF),
                       child: Center(
                         child: SizedBox.square(
                           dimension: 28,
-                          child:
-                              CircularProgressIndicator(
+                          child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            color:
-                                AppColors.blue,
+                            color: AppColors.blue,
                           ),
                         ),
                       ),
                     );
                   },
-                  errorWidget:
-                      (context, url, error) {
+                  errorWidget: (context, url, error) {
                     return const ColoredBox(
-                      color:
-                          Color(0xFFE8F3FF),
+                      color: Color(0xFFE8F3FF),
                       child: Center(
                         child: Icon(
-                          Icons
-                              .image_not_supported_outlined,
-                          color:
-                              AppColors.blue,
+                          Icons.image_not_supported_outlined,
+                          color: AppColors.blue,
                           size: 42,
                         ),
                       ),
@@ -981,40 +878,33 @@ class _NewsCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding:
-                  const EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 15,
                 13,
                 15,
                 15,
               ),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     item.displayTitle,
                     maxLines: 1,
-                    overflow:
-                        TextOverflow.ellipsis,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.ink,
                       fontSize: 16,
-                      fontWeight:
-                          FontWeight.w900,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                  if (item
-                      .hasDescription) ...[
+                  if (item.hasDescription) ...[
                     const SizedBox(height: 4),
                     Text(
                       item.description!,
                       maxLines: 2,
-                      overflow:
-                          TextOverflow.ellipsis,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color:
-                            AppColors.muted,
+                        color: AppColors.muted,
                         fontSize: 12,
                         height: 1.3,
                       ),
@@ -1027,24 +917,19 @@ class _NewsCard extends StatelessWidget {
                         _date(
                           item.displayDate,
                         ),
-                        style:
-                            const TextStyle(
-                          color:
-                              AppColors.muted,
+                        style: const TextStyle(
+                          color: AppColors.muted,
                           fontSize: 11,
-                          fontWeight:
-                              FontWeight.w600,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const Spacer(),
                       const Text(
                         'Ver detalle',
                         style: TextStyle(
-                          color:
-                              AppColors.blue,
+                          color: AppColors.blue,
                           fontSize: 12,
-                          fontWeight:
-                              FontWeight.w800,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
@@ -1077,8 +962,7 @@ class _QuickAction extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             vertical: 18,
             horizontal: 4,
           ),
@@ -1091,8 +975,7 @@ class _QuickAction extends StatelessWidget {
                   color: const Color(
                     0xFFE8F3FF,
                   ),
-                  borderRadius:
-                      BorderRadius.circular(
+                  borderRadius: BorderRadius.circular(
                     14,
                   ),
                 ),
@@ -1106,11 +989,9 @@ class _QuickAction extends StatelessWidget {
               Text(
                 label,
                 maxLines: 1,
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontWeight:
-                      FontWeight.w700,
+                  fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
               ),
@@ -1144,23 +1025,19 @@ class _MessageCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 25,
-              backgroundColor:
-                  const Color(0xFFE8F3FF),
-              foregroundColor:
-                  AppColors.blue,
+              backgroundColor: const Color(0xFFE8F3FF),
+              foregroundColor: AppColors.blue,
               child: Icon(icon),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
                     style: const TextStyle(
-                      fontWeight:
-                          FontWeight.w800,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 4),

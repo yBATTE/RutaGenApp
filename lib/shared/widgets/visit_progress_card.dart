@@ -13,13 +13,11 @@ class VisitProgressCard extends StatelessWidget {
   final VisitProgress progress;
   final VoidCallback onOpenGifts;
 
-
-static const _stations = <({String slug, String label})>[
-  (slug: 'combustibles-canning-1', label: 'Canning 1'),
-  (slug: 'combustibles-canning-2', label: 'Vision Canning'),
-  (slug: 'catania', label: 'Catania'),
-];
-
+  static const _stations = <({String slug, String label})>[
+    (slug: 'combustibles-canning-1', label: 'Combustibles Canning'),
+    (slug: 'combustibles-canning-2', label: 'Vision Canning'),
+    (slug: 'catania', label: 'Catania'),
+  ];
 
   bool _visited(String slug) {
     return progress.visitedStations.any((station) => station.slug == slug);
@@ -49,9 +47,11 @@ static const _stations = <({String slug, String label})>[
           ? 'Ganaste $breakfastName. Te falta 1 estación para desbloquear $mealName.'
           : 'Ganaste $breakfastName.';
     } else if (progress.stationCount == 1) {
-      message = 'Visitá 1 estación distinta más para desbloquear $breakfastName.';
+      message =
+          'Visitá 1 estación distinta más para desbloquear $breakfastName.';
     } else {
-      message = 'Visitá estaciones Ruta GEN distintas y desbloqueá beneficios este mes.';
+      message =
+          'Visitá estaciones Ruta GEN distintas y desbloqueá beneficios este mes.';
     }
 
     return Container(
@@ -124,7 +124,8 @@ static const _stations = <({String slug, String label})>[
                     visited
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked_rounded,
-                    color: visited ? AppColors.success : const Color(0xFFB8C2CE),
+                    color:
+                        visited ? AppColors.success : const Color(0xFFB8C2CE),
                     size: 20,
                   ),
                   const SizedBox(width: 9),

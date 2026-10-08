@@ -29,8 +29,18 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
 
   String _date(DateTime value) {
     const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
     ];
     return '${value.day} de ${months[value.month - 1]} de ${value.year}';
   }

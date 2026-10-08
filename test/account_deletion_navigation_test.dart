@@ -6,11 +6,13 @@ import 'package:ruta_gen_app/services/api_client.dart';
 Future<void> press(WidgetTester tester, String label) async {
   final finder = find.text(label);
   await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
 
 void main() {
+
   testWidgets('two confirmations, password and cleanup precede completion',
       (tester) async {
     final calls = <String>[];
@@ -47,9 +49,10 @@ void main() {
         home: DeleteAccountPage(
       deleteAccount: (_) async {
         attempts++;
-        if (attempts == 1)
+        if (attempts == 1) {
           throw const ApiException(
               message: 'La contraseña actual es incorrecta.', statusCode: 401);
+        }
       },
       clearDeletedSession: () async {
         cleaned = true;
@@ -101,6 +104,10 @@ void main() {
 
   testWidgets('Volver cancels confirmation without requesting deletion',
       (tester) async {
+    tester.view.physicalSize = const Size(800, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     var deleted = false;
     await tester.pumpWidget(MaterialApp(
         home: DeleteAccountPage(

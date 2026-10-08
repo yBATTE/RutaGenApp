@@ -96,8 +96,9 @@ void main() {
       requests++;
       expect(request.url.path, endsWith('/points/promotion'));
       expect(request.headers['Authorization'], 'Bearer test-token');
-      if (requests == 3)
+      if (requests == 3) {
         return http.Response('{"message":"No encontrado"}', 404);
+      }
       return http.Response(
           jsonEncode({
             'data': {

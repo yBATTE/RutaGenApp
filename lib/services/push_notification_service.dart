@@ -486,7 +486,9 @@ class PushNotificationService {
 
   Future<void> _registerToken(String token) async {
     if (AuthService.instance.accountDeletionInProgress ||
-        !await _apiClient.hasSession()) return;
+        !await _apiClient.hasSession()) {
+      return;
+    }
     final cleanToken = token.trim();
 
     if (cleanToken.isEmpty) {

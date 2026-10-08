@@ -14,12 +14,10 @@ class MovementsPage extends StatefulWidget {
   final RutaGenRepository repository;
 
   @override
-  State<MovementsPage> createState() =>
-      _MovementsPageState();
+  State<MovementsPage> createState() => _MovementsPageState();
 }
 
-class _MovementsPageState
-    extends State<MovementsPage> {
+class _MovementsPageState extends State<MovementsPage> {
   static const int _pageSize = 20;
 
   final List<Movement> _movements = [];
@@ -47,8 +45,7 @@ class _MovementsPageState
     });
 
     try {
-      final movements =
-          await widget.repository.getMovements(
+      final movements = await widget.repository.getMovements(
         page: 1,
         limit: _pageSize,
       );
@@ -62,8 +59,7 @@ class _MovementsPageState
           ..clear()
           ..addAll(movements);
 
-        _hasMore =
-            movements.length == _pageSize;
+        _hasMore = movements.length == _pageSize;
         _loading = false;
       });
     } catch (error) {
@@ -91,8 +87,7 @@ class _MovementsPageState
     final nextPage = _currentPage + 1;
 
     try {
-      final movements =
-          await widget.repository.getMovements(
+      final movements = await widget.repository.getMovements(
         page: nextPage,
         limit: _pageSize,
       );
@@ -104,8 +99,7 @@ class _MovementsPageState
       setState(() {
         _movements.addAll(movements);
         _currentPage = nextPage;
-        _hasMore =
-            movements.length == _pageSize;
+        _hasMore = movements.length == _pageSize;
         _loadingMore = false;
       });
     } catch (error) {
@@ -136,9 +130,9 @@ class _MovementsPageState
 
   String _points(int value) {
     return value.abs().toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => '.',
-    );
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (_) => '.',
+        );
   }
 
   String _day(DateTime date) {
@@ -156,8 +150,7 @@ class _MovementsPageState
       date.day,
     );
 
-    final difference =
-        today.difference(value).inDays;
+    final difference = today.difference(value).inDays;
 
     if (difference == 0) {
       return 'Hoy';
@@ -211,8 +204,7 @@ class _MovementsPageState
         onRefresh: _loadFirstPage,
         color: AppColors.blue,
         child: ListView(
-          physics:
-              const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(24),
           children: [
             const SizedBox(height: 100),
@@ -252,8 +244,7 @@ class _MovementsPageState
         onRefresh: _loadFirstPage,
         color: AppColors.blue,
         child: ListView(
-          physics:
-              const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(24),
           children: [
             const SizedBox(height: 100),
@@ -289,29 +280,22 @@ class _MovementsPageState
       onRefresh: _loadFirstPage,
       color: AppColors.blue,
       child: ListView.separated(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        padding:
-            const EdgeInsets.fromLTRB(18, 12, 18, 30),
-        itemCount:
-            _movements.length + (_hasMore ? 1 : 0),
-        separatorBuilder: (_, __) =>
-            const SizedBox(height: 12),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 30),
+        itemCount: _movements.length + (_hasMore ? 1 : 0),
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (index == _movements.length) {
             return Padding(
-              padding:
-                  const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 4),
               child: Center(
                 child: FilledButton.tonalIcon(
-                  onPressed:
-                      _loadingMore ? null : _loadMore,
+                  onPressed: _loadingMore ? null : _loadMore,
                   icon: _loadingMore
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child:
-                              CircularProgressIndicator(
+                          child: CircularProgressIndicator(
                             strokeWidth: 2,
                           ),
                         )
@@ -319,9 +303,7 @@ class _MovementsPageState
                           Icons.expand_more_rounded,
                         ),
                   label: Text(
-                    _loadingMore
-                        ? 'Cargando...'
-                        : 'Cargar más',
+                    _loadingMore ? 'Cargando...' : 'Cargar más',
                   ),
                 ),
               ),
@@ -337,8 +319,7 @@ class _MovementsPageState
                   _day(movement.argentinaDate);
 
           return Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (showDay)
                 Padding(
@@ -361,8 +342,7 @@ class _MovementsPageState
                     vertical: 15,
                   ),
                   child: Row(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       CircleAvatar(
                         backgroundColor: isGift
@@ -388,22 +368,19 @@ class _MovementsPageState
                       const SizedBox(width: 13),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               movement.title,
                               style: const TextStyle(
-                                fontWeight:
-                                    FontWeight.w800,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               movement.subtitle,
                               style: const TextStyle(
-                                color:
-                                    AppColors.muted,
+                                color: AppColors.muted,
                                 fontSize: 13,
                                 height: 1.35,
                               ),
@@ -414,11 +391,9 @@ class _MovementsPageState
                                   ? _adjustmentDateTime(movement.argentinaDate)
                                   : _hour(movement.argentinaDate),
                               style: TextStyle(
-                                color:
-                                    Colors.grey.shade500,
+                                color: Colors.grey.shade500,
                                 fontSize: 12,
-                                fontWeight:
-                                    FontWeight.w600,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

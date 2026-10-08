@@ -123,7 +123,8 @@ class _MyQrPageState extends State<MyQrPage> {
     final repository = _qrRepository;
     if (repository == null) {
       setState(() {
-        _errorMessage = 'La versión actual del repositorio no admite QR temporal.';
+        _errorMessage =
+            'La versión actual del repositorio no admite QR temporal.';
       });
       return;
     }
@@ -138,9 +139,8 @@ class _MyQrPageState extends State<MyQrPage> {
     }
 
     try {
-      final result = renew
-          ? await repository.renewQr()
-          : await repository.getCurrentQr();
+      final result =
+          renew ? await repository.renewQr() : await repository.getCurrentQr();
 
       if (!mounted) return;
 
@@ -170,7 +170,8 @@ class _MyQrPageState extends State<MyQrPage> {
       if (renew) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Generamos un QR nuevo. El anterior ya no es válido.'),
+            content:
+                Text('Generamos un QR nuevo. El anterior ya no es válido.'),
           ),
         );
       }
@@ -184,9 +185,7 @@ class _MyQrPageState extends State<MyQrPage> {
 
       if (error.statusCode == 410) {
         final details = error.details;
-        final code = details is Map
-            ? details['code']?.toString()
-            : null;
+        final code = details is Map ? details['code']?.toString() : null;
 
         setState(() {
           _qr = null;
@@ -386,9 +385,7 @@ class _MyQrPageState extends State<MyQrPage> {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                consumed
-                    ? Icons.check_circle_rounded
-                    : Icons.timer_off_rounded,
+                consumed ? Icons.check_circle_rounded : Icons.timer_off_rounded,
                 size: 48,
                 color: consumed ? AppColors.blue : AppColors.danger,
               ),
@@ -573,7 +570,7 @@ class _MyQrPageState extends State<MyQrPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.timer_outlined,
                 size: 19,
                 color: AppColors.blue,

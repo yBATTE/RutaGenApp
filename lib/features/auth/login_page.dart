@@ -89,8 +89,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       try {
-        final alreadyEnabled =
-            await AuthService.instance.isBiometricEnabled();
+        final alreadyEnabled = await AuthService.instance.isBiometricEnabled();
 
         if (!alreadyEnabled) {
           await _offerBiometricSetup(
@@ -133,8 +132,7 @@ class _LoginPageState extends State<LoginPage> {
     required String identifier,
     required String password,
   }) async {
-    final available =
-        await AuthService.instance.isBiometricAvailable();
+    final available = await AuthService.instance.isBiometricAvailable();
 
     if (!mounted) {
       return;
@@ -229,8 +227,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final enabled =
-        await AuthService.instance.isBiometricEnabled();
+    final enabled = await AuthService.instance.isBiometricEnabled();
 
     if (!mounted) {
       return;
@@ -247,8 +244,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
 
     try {
-      final user =
-          await AuthService.instance.loginWithBiometrics();
+      final user = await AuthService.instance.loginWithBiometrics();
 
       if (!mounted) {
         return;
@@ -294,8 +290,7 @@ class _LoginPageState extends State<LoginPage> {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ForgotPasswordPage(
-          initialIdentifier:
-              _userController.text.trim(),
+          initialIdentifier: _userController.text.trim(),
         ),
       ),
     );
@@ -340,12 +335,10 @@ class _LoginPageState extends State<LoginPage> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.fromLTRB(26, 40, 26, 24),
+            padding: const EdgeInsets.fromLTRB(26, 40, 26, 24),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minHeight:
-                    MediaQuery.sizeOf(context).height - 88,
+                minHeight: MediaQuery.sizeOf(context).height - 88,
               ),
               child: Form(
                 key: _formKey,
@@ -353,7 +346,6 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     const RutaGenLogo(),
                     const SizedBox(height: 50),
-
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text.rich(
@@ -375,16 +367,12 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 22),
-
                     TextFormField(
                       controller: _userController,
                       enabled: !_loading,
-                      keyboardType:
-                          TextInputType.emailAddress,
-                      textInputAction:
-                          TextInputAction.next,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       autofillHints: const [
                         AutofillHints.username,
                         AutofillHints.email,
@@ -396,23 +384,19 @@ class _LoginPageState extends State<LoginPage> {
                         hintText: 'DNI o correo',
                       ),
                       validator: (value) {
-                        if (value == null ||
-                            value.trim().isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Ingresá tu DNI o correo.';
                         }
 
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 12),
-
                     TextFormField(
                       controller: _passwordController,
                       enabled: !_loading,
                       obscureText: _obscurePassword,
-                      textInputAction:
-                          TextInputAction.done,
+                      textInputAction: TextInputAction.done,
                       autofillHints: const [
                         AutofillHints.password,
                       ],
@@ -431,34 +415,28 @@ class _LoginPageState extends State<LoginPage> {
                               ? null
                               : () {
                                   setState(() {
-                                    _obscurePassword =
-                                        !_obscurePassword;
+                                    _obscurePassword = !_obscurePassword;
                                   });
                                 },
                           icon: Icon(
                             _obscurePassword
                                 ? Icons.visibility_outlined
-                                : Icons
-                                    .visibility_off_outlined,
+                                : Icons.visibility_off_outlined,
                           ),
                         ),
                       ),
                       validator: (value) {
-                        if (value == null ||
-                            value.isEmpty) {
+                        if (value == null || value.isEmpty) {
                           return 'Ingresá tu contraseña.';
                         }
 
                         return null;
                       },
                     ),
-
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: _loading
-                            ? null
-                            : _openForgotPassword,
+                        onPressed: _loading ? null : _openForgotPassword,
                         child: const Text(
                           '¿Olvidaste tu contraseña?',
                           style: TextStyle(
@@ -468,35 +446,27 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 6),
-
                     FilledButton(
-                      onPressed:
-                          _loading ? null : _login,
+                      onPressed: _loading ? null : _login,
                       child: _loading
                           ? const SizedBox.square(
                               dimension: 22,
-                              child:
-                                  CircularProgressIndicator(
+                              child: CircularProgressIndicator(
                                 strokeWidth: 2.4,
                                 color: Colors.white,
                               ),
                             )
                           : const Text('Ingresar'),
                     ),
-
                     TextButton(
                       onPressed: _loading
                           ? null
                           : () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      RegisterPage(
-                                    onRegistered:
-                                        widget
-                                            .onAuthenticated,
+                                  builder: (_) => RegisterPage(
+                                    onRegistered: widget.onAuthenticated,
                                   ),
                                 ),
                               );
@@ -505,16 +475,12 @@ class _LoginPageState extends State<LoginPage> {
                         'Crear cuenta',
                         style: TextStyle(
                           color: AppColors.cyan,
-                          decoration:
-                              TextDecoration.underline,
-                          decorationColor:
-                              AppColors.cyan,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.cyan,
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
                     Row(
                       children: [
                         Expanded(
@@ -530,8 +496,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           child: Text(
                             'o',
-                            style:
-                                TextStyle(color: Colors.white),
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                         Expanded(
@@ -543,13 +508,9 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 22),
-
                     OutlinedButton.icon(
-                      onPressed: _loading
-                          ? null
-                          : _loginWithBiometrics,
+                      onPressed: _loading ? null : _loginWithBiometrics,
                       icon: const Icon(
                         Icons.fingerprint_rounded,
                       ),
@@ -561,16 +522,13 @@ class _LoginPageState extends State<LoginPage> {
                                 : 'Ingresar con biometría',
                       ),
                       style: OutlinedButton.styleFrom(
-                        minimumSize:
-                            const Size.fromHeight(54),
-                        foregroundColor:
-                            AppColors.cyan,
+                        minimumSize: const Size.fromHeight(54),
+                        foregroundColor: AppColors.cyan,
                         side: const BorderSide(
                           color: AppColors.blue,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                     ),

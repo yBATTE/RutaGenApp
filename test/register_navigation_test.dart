@@ -97,6 +97,9 @@ void main() {
     await tester.tap(find.text('Crear mi cuenta'));
     await tester.pumpAndSettle();
     expect(find.text('Ingresar a mi cuenta'), findsOneWidget);
+    // El SnackBar de error cubre el botón situado al pie del formulario.
+    tester.state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger)).removeCurrentSnackBar();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ingresar a mi cuenta'));
     await tester.pumpAndSettle();
     expect(registers, 1);
@@ -162,6 +165,9 @@ void main() {
     await tester.tap(find.text('Crear mi cuenta'));
     await tester.pumpAndSettle();
     expect(find.text('Ingresar a mi cuenta'), findsOneWidget);
+    // El SnackBar de error cubre el botón situado al pie del formulario.
+    tester.state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger)).removeCurrentSnackBar();
+    await tester.pumpAndSettle();
     expect(navigations, 0);
     await tester.tap(find.text('Ingresar a mi cuenta'));
     await tester.pumpAndSettle();

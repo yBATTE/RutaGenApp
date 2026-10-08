@@ -22,8 +22,7 @@ class StationsPage extends StatefulWidget {
 }
 
 class _StationsPageState extends State<StationsPage> {
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   Position? _currentPosition;
   bool _loadingLocation = true;
@@ -31,7 +30,7 @@ class _StationsPageState extends State<StationsPage> {
 
   static const List<_LocalStation> _stations = [
     _LocalStation(
-      name: 'Combustibles Canning 1',
+      name: 'Combustibles Canning',
       address: 'Canning, Buenos Aires',
       zone: 'Canning',
       latitude: -34.9322363,
@@ -73,8 +72,7 @@ class _StationsPageState extends State<StationsPage> {
     }
 
     try {
-      final serviceEnabled =
-          await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
         if (!mounted) return;
@@ -109,8 +107,7 @@ class _StationsPageState extends State<StationsPage> {
         });
 
         _showLocationMessage(
-          message:
-              'No se otorgó permiso para acceder a tu ubicación.',
+          message: 'No se otorgó permiso para acceder a tu ubicación.',
         );
 
         return;
@@ -156,8 +153,7 @@ class _StationsPageState extends State<StationsPage> {
       });
 
       _showLocationMessage(
-        message:
-            'No pudimos obtener tu ubicación en este momento.',
+        message: 'No pudimos obtener tu ubicación en este momento.',
       );
     }
   }
@@ -190,8 +186,7 @@ class _StationsPageState extends State<StationsPage> {
       '/maps/dir/',
       {
         'api': '1',
-        'destination':
-            '${station.latitude},${station.longitude}',
+        'destination': '${station.latitude},${station.longitude}',
         'travelmode': 'driving',
       },
     );
@@ -277,11 +272,9 @@ class _StationsPageState extends State<StationsPage> {
 
     if (_currentPosition != null) {
       stations.sort((first, second) {
-        final firstDistance =
-            _distanceToStation(first) ?? double.infinity;
+        final firstDistance = _distanceToStation(first) ?? double.infinity;
 
-        final secondDistance =
-            _distanceToStation(second) ?? double.infinity;
+        final secondDistance = _distanceToStation(second) ?? double.infinity;
 
         return firstDistance.compareTo(secondDistance);
       });
@@ -305,8 +298,7 @@ class _StationsPageState extends State<StationsPage> {
         actions: [
           IconButton(
             tooltip: 'Actualizar ubicación',
-            onPressed:
-                _loadingLocation ? null : _loadCurrentLocation,
+            onPressed: _loadingLocation ? null : _loadCurrentLocation,
             icon: _loadingLocation
                 ? const SizedBox(
                     width: 20,
@@ -371,7 +363,7 @@ class _StationsPageState extends State<StationsPage> {
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
@@ -396,8 +388,7 @@ class _StationsPageState extends State<StationsPage> {
                     elevation: 4,
                     child: InkWell(
                       onTap: _openFullMap,
-                      borderRadius:
-                          BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14),
                       child: const Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 16,
@@ -440,19 +431,16 @@ class _StationsPageState extends State<StationsPage> {
                       30,
                     ),
                     itemCount: stations.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 10),
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final station = stations[index];
 
                       return Card(
                         clipBehavior: Clip.antiAlias,
                         child: InkWell(
-                          onTap: () =>
-                              _openGoogleMaps(station),
+                          onTap: () => _openGoogleMaps(station),
                           child: Padding(
-                            padding:
-                                const EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 14,
                             ),
@@ -460,50 +448,40 @@ class _StationsPageState extends State<StationsPage> {
                               children: [
                                 const CircleAvatar(
                                   radius: 25,
-                                  backgroundColor:
-                                      Color(0xFFE9F4FF),
-                                  foregroundColor:
-                                      AppColors.blue,
+                                  backgroundColor: Color(0xFFE9F4FF),
+                                  foregroundColor: AppColors.blue,
                                   child: Icon(
-                                    Icons
-                                        .local_gas_station_rounded,
+                                    Icons.local_gas_station_rounded,
                                   ),
                                 ),
                                 const SizedBox(width: 13),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment
-                                            .start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         station.name,
-                                        style:
-                                            const TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 15,
-                                          fontWeight:
-                                              FontWeight.w900,
+                                          fontWeight: FontWeight.w900,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         station.address,
                                         style: const TextStyle(
-                                          color:
-                                              AppColors.muted,
-                                          fontWeight:
-                                              FontWeight.w500,
+                                          color: AppColors.muted,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
                                           const Icon(
-                                            Icons
-                                                .near_me_rounded,
+                                            Icons.near_me_rounded,
                                             size: 15,
-                                            color:
-                                                AppColors.blue,
+                                            color: AppColors.blue,
                                           ),
                                           const SizedBox(
                                             width: 4,
@@ -513,14 +491,10 @@ class _StationsPageState extends State<StationsPage> {
                                               _distanceText(
                                                 station,
                                               ),
-                                              style:
-                                                  const TextStyle(
-                                                color: AppColors
-                                                    .blue,
+                                              style: const TextStyle(
+                                                color: AppColors.blue,
                                                 fontSize: 12,
-                                                fontWeight:
-                                                    FontWeight
-                                                        .w700,
+                                                fontWeight: FontWeight.w700,
                                               ),
                                             ),
                                           ),
@@ -535,14 +509,12 @@ class _StationsPageState extends State<StationsPage> {
                                   height: 42,
                                   decoration: BoxDecoration(
                                     color: AppColors.blue,
-                                    borderRadius:
-                                        BorderRadius.circular(
+                                    borderRadius: BorderRadius.circular(
                                       13,
                                     ),
                                   ),
                                   child: const Icon(
-                                    Icons
-                                        .directions_rounded,
+                                    Icons.directions_rounded,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -569,30 +541,27 @@ class _StationsMap extends StatelessWidget {
 
   final List<_LocalStation> stations;
   final Position? currentPosition;
-  final Future<void> Function(_LocalStation station)
-      onStationPressed;
+  final Future<void> Function(_LocalStation station) onStationPressed;
 
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
-options: const MapOptions(
-  initialCenter: LatLng(
-    -34.9285,
-    -58.4620,
-  ),
-  initialZoom: 11.7,
-  minZoom: 2,
-  maxZoom: 19,
-  interactionOptions: InteractionOptions(
-    flags: InteractiveFlag.all,
-  ),
-),
+      options: const MapOptions(
+        initialCenter: LatLng(
+          -34.9285,
+          -58.4620,
+        ),
+        initialZoom: 11.7,
+        minZoom: 2,
+        maxZoom: 19,
+        interactionOptions: InteractionOptions(
+          flags: InteractiveFlag.all,
+        ),
+      ),
       children: [
         TileLayer(
-          urlTemplate:
-              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName:
-              'com.grupogen.ruta_gen_app',
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.grupogen.ruta_gen_app',
         ),
         MarkerLayer(
           markers: [
@@ -618,8 +587,7 @@ options: const MapOptions(
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              Colors.black.withOpacity(0.25),
+                          color: Colors.black.withValues(alpha: 0.25),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -652,8 +620,7 @@ options: const MapOptions(
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color:
-                            Colors.black.withOpacity(0.25),
+                        color: Colors.black.withValues(alpha: 0.25),
                         blurRadius: 8,
                       ),
                     ],
@@ -683,8 +650,7 @@ class _FullStationsMapPage extends StatelessWidget {
 
   final List<_LocalStation> stations;
   final Position? currentPosition;
-  final Future<void> Function(_LocalStation station)
-      onStationPressed;
+  final Future<void> Function(_LocalStation station) onStationPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -706,24 +672,24 @@ class _FullStationsMapPage extends StatelessWidget {
               onStationPressed: onStationPressed,
             ),
           ),
-          Positioned(
+          const Positioned(
             left: 16,
             right: 16,
             bottom: 20,
             child: Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.touch_app_rounded,
                       color: AppColors.blue,
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
+                    SizedBox(width: 10),
+                    Expanded(
                       child: Text(
                         'Tocá una estación para abrir la ruta en Google Maps.',
                         style: TextStyle(

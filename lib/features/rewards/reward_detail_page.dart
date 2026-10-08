@@ -29,9 +29,9 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
 
   String _points(int value) {
     return value.toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => '.',
-    );
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (_) => '.',
+        );
   }
 
   void _openQr(BuildContext context) {
@@ -41,8 +41,8 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final canRedeem =
-        widget.availablePoints >= widget.reward.points && widget.reward.stock > 0;
+    final canRedeem = widget.availablePoints >= widget.reward.points &&
+        widget.reward.stock > 0;
     final reward = widget.reward;
     final availablePoints = widget.availablePoints;
     final gallery = reward.gallery;
@@ -75,7 +75,8 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
             child: gallery.isNotEmpty
                 ? PageView.builder(
                     itemCount: gallery.length,
-                    onPageChanged: (index) => setState(() => _selectedPhoto = index),
+                    onPageChanged: (index) =>
+                        setState(() => _selectedPhoto = index),
                     itemBuilder: (context, index) => GestureDetector(
                       onTap: () => showDialog<void>(
                         context: context,
@@ -83,16 +84,21 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
                           backgroundColor: Colors.white,
                           insetPadding: const EdgeInsets.all(12),
                           child: InteractiveViewer(
-                            minScale: 1, maxScale: 4,
-                            child: Image.network(gallery[index], fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined)),
+                            minScale: 1,
+                            maxScale: 4,
+                            child: Image.network(gallery[index],
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.broken_image_outlined)),
                           ),
                         ),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(10),
-                        child: Image.network(gallery[index], fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Icon(reward.icon, size: 130, color: AppColors.navy)),
+                        child: Image.network(gallery[index],
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Icon(reward.icon,
+                                size: 130, color: AppColors.navy)),
                       ),
                     ),
                   )
@@ -104,17 +110,23 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
           ),
           if (gallery.length > 1) ...[
             const SizedBox(height: 12),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(gallery.length, (index) =>
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: _selectedPhoto == index ? 20 : 7, height: 7,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                decoration: BoxDecoration(
-                  color: _selectedPhoto == index ? AppColors.blue : AppColors.border,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            )),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  gallery.length,
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: _selectedPhoto == index ? 20 : 7,
+                    height: 7,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: _selectedPhoto == index
+                          ? AppColors.blue
+                          : AppColors.border,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                )),
           ],
           const SizedBox(height: 22),
           Text(
@@ -150,9 +162,7 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
             child: Text(
               reward.stock > 0 ? '✓ Stock disponible' : 'Sin stock disponible',
               style: TextStyle(
-                color: reward.stock > 0
-                    ? AppColors.success
-                    : AppColors.danger,
+                color: reward.stock > 0 ? AppColors.success : AppColors.danger,
                 fontWeight: FontWeight.w700,
               ),
             ),

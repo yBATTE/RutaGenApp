@@ -1,0 +1,4 @@
+Archivos modificados: 5. Conservar todo el resto del proyecto.
+Antes de copiar, hacer respaldo o commit Git.
+Despues ejecutar flutter analyze y flutter test.
+No se pudo ejecutar Flutter en este entorno; pruebas pendientes en Windows.

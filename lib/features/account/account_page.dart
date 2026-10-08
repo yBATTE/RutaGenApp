@@ -103,7 +103,9 @@ class AccountPage extends StatelessWidget {
                 _InformationTile(
                   icon: Icons.badge_outlined,
                   title: 'DNI',
-                  value: user.dni.trim().isEmpty ? 'Pendiente de completar' : user.dni,
+                  value: user.dni.trim().isEmpty
+                      ? 'Pendiente de completar'
+                      : user.dni,
                 ),
                 const Divider(height: 1),
                 _InformationTile(

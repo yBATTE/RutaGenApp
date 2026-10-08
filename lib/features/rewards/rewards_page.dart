@@ -99,9 +99,9 @@ class _RewardsPageState extends State<RewardsPage> {
 
   String _points(int value) {
     return value.toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => '.',
-    );
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (_) => '.',
+        );
   }
 
   @override
@@ -118,8 +118,7 @@ class _RewardsPageState extends State<RewardsPage> {
       body: FutureBuilder<Customer>(
         future: _customer,
         builder: (context, customerSnapshot) {
-          if (customerSnapshot.connectionState ==
-                  ConnectionState.waiting &&
+          if (customerSnapshot.connectionState == ConnectionState.waiting &&
               !customerSnapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(),
@@ -200,7 +199,8 @@ class _RewardsPageState extends State<RewardsPage> {
                     onTap: widget.onOpenGiftRewards,
                     borderRadius: BorderRadius.circular(18),
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       child: Row(
                         children: [
                           CircleAvatar(
@@ -231,7 +231,8 @@ class _RewardsPageState extends State<RewardsPage> {
                               ],
                             ),
                           ),
-                          Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+                          Icon(Icons.chevron_right_rounded,
+                              color: AppColors.muted),
                         ],
                       ),
                     ),
@@ -251,7 +252,8 @@ class _RewardsPageState extends State<RewardsPage> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.lock_outline_rounded, color: Color(0xFF8A5700)),
+                        Icon(Icons.lock_outline_rounded,
+                            color: Color(0xFF8A5700)),
                         SizedBox(width: 9),
                         Expanded(
                           child: Text(
@@ -301,8 +303,7 @@ class _RewardsPageState extends State<RewardsPage> {
                 child: FutureBuilder<List<Reward>>(
                   future: _rewards,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                            ConnectionState.waiting &&
+                    if (snapshot.connectionState == ConnectionState.waiting &&
                         !snapshot.hasData) {
                       return const Center(
                         child: CircularProgressIndicator(),
@@ -313,8 +314,7 @@ class _RewardsPageState extends State<RewardsPage> {
                       return RefreshIndicator(
                         onRefresh: _refresh,
                         child: ListView(
-                          physics:
-                              const AlwaysScrollableScrollPhysics(),
+                          physics: const AlwaysScrollableScrollPhysics(),
                           children: const [
                             SizedBox(height: 150),
                             Padding(
@@ -330,11 +330,9 @@ class _RewardsPageState extends State<RewardsPage> {
                     }
 
                     final rewards =
-                        (snapshot.data ?? const <Reward>[])
-                            .where((reward) {
+                        (snapshot.data ?? const <Reward>[]).where((reward) {
                       if (_filter == 1) {
-                        return reward.points <= points &&
-                            reward.stock > 0;
+                        return reward.points <= points && reward.stock > 0;
                       }
 
                       if (_filter == 2) {
@@ -348,8 +346,7 @@ class _RewardsPageState extends State<RewardsPage> {
                       return RefreshIndicator(
                         onRefresh: _refresh,
                         child: ListView(
-                          physics:
-                              const AlwaysScrollableScrollPhysics(),
+                          physics: const AlwaysScrollableScrollPhysics(),
                           children: [
                             const SizedBox(height: 150),
                             Padding(
@@ -375,8 +372,7 @@ class _RewardsPageState extends State<RewardsPage> {
                     return RefreshIndicator(
                       onRefresh: _refresh,
                       child: ListView.separated(
-                        physics:
-                            const AlwaysScrollableScrollPhysics(),
+                        physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(
                           18,
                           10,
@@ -384,15 +380,13 @@ class _RewardsPageState extends State<RewardsPage> {
                           30,
                         ),
                         itemCount: rewards.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 12),
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final reward = rewards[index];
 
                           return Card(
                             child: InkWell(
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
                               onTap: () {
                                 _openRewardDetail(
                                   reward: reward,
@@ -400,8 +394,7 @@ class _RewardsPageState extends State<RewardsPage> {
                                 );
                               },
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(16),
                                 child: Row(
                                   children: [
                                     Container(
@@ -410,74 +403,57 @@ class _RewardsPageState extends State<RewardsPage> {
                                       clipBehavior: Clip.antiAlias,
                                       decoration: BoxDecoration(
                                         color: AppColors.ice,
-                                        borderRadius:
-                                            BorderRadius.circular(
+                                        borderRadius: BorderRadius.circular(
                                           16,
                                         ),
                                       ),
-                                      child: reward.imageUrl !=
-                                                  null &&
-                                              reward
-                                                  .imageUrl!
-                                                  .isNotEmpty
+                                      child: reward.imageUrl != null &&
+                                              reward.imageUrl!.isNotEmpty
                                           ? Image.network(
                                               reward.imageUrl!,
                                               fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (_, __, ___) =>
-                                                      Icon(
+                                              errorBuilder: (_, __, ___) =>
+                                                  Icon(
                                                 reward.icon,
                                                 size: 42,
-                                                color:
-                                                    AppColors.navy,
+                                                color: AppColors.navy,
                                               ),
                                             )
                                           : Icon(
                                               reward.icon,
                                               size: 42,
-                                              color:
-                                                  AppColors.navy,
+                                              color: AppColors.navy,
                                             ),
                                     ),
                                     const SizedBox(width: 15),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment
-                                                .start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             reward.name,
-                                            style:
-                                                const TextStyle(
-                                              fontWeight:
-                                                  FontWeight.w800,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
                                               fontSize: 16,
                                             ),
                                           ),
-                                          if (reward
-                                              .subtitle.isNotEmpty)
+                                          if (reward.subtitle.isNotEmpty)
                                             Text(
                                               reward.subtitle,
                                               maxLines: 2,
-                                              overflow: TextOverflow
-                                                  .ellipsis,
-                                              style:
-                                                  const TextStyle(
-                                                color:
-                                                    AppColors.muted,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: AppColors.muted,
                                               ),
                                             ),
                                           const SizedBox(height: 8),
                                           Text(
                                             '${_points(reward.points)} puntos',
-                                            style:
-                                                const TextStyle(
-                                              color:
-                                                  AppColors.blue,
+                                            style: const TextStyle(
+                                              color: AppColors.blue,
                                               fontSize: 17,
-                                              fontWeight:
-                                                  FontWeight.w900,
+                                              fontWeight: FontWeight.w900,
                                             ),
                                           ),
                                           Text(
@@ -485,14 +461,10 @@ class _RewardsPageState extends State<RewardsPage> {
                                                 ? 'Stock disponible'
                                                 : 'Sin stock',
                                             style: TextStyle(
-                                              color:
-                                                  reward.stock > 0
-                                                      ? AppColors
-                                                          .success
-                                                      : AppColors
-                                                          .danger,
-                                              fontWeight:
-                                                  FontWeight.w700,
+                                              color: reward.stock > 0
+                                                  ? AppColors.success
+                                                  : AppColors.danger,
+                                              fontWeight: FontWeight.w700,
                                               fontSize: 12,
                                             ),
                                           ),

@@ -14,20 +14,16 @@ class ForgotPasswordPage extends StatefulWidget {
   final String initialIdentifier;
 
   @override
-  State<ForgotPasswordPage> createState() =>
-      _ForgotPasswordPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState
-    extends State<ForgotPasswordPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _identifierFormKey = GlobalKey<FormState>();
   final _resetFormKey = GlobalKey<FormState>();
 
   late final TextEditingController _identifierController;
-  final TextEditingController _codeController =
-      TextEditingController();
-  final TextEditingController _newPasswordController =
-      TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
@@ -77,8 +73,7 @@ class _ForgotPasswordPageState
       _loading = true;
     });
 
-    final identifier =
-        _identifierController.text.trim();
+    final identifier = _identifierController.text.trim();
 
     try {
       await AuthService.instance.forgotPassword(
@@ -191,10 +186,8 @@ class _ForgotPasswordPageState
       await AuthService.instance.resetPassword(
         identifier: _identifierUsed,
         code: _codeController.text.trim(),
-        newPassword:
-            _newPasswordController.text,
-        confirmPassword:
-            _confirmPasswordController.text,
+        newPassword: _newPasswordController.text,
+        confirmPassword: _confirmPasswordController.text,
       );
 
       if (!mounted) {
@@ -300,8 +293,7 @@ class _ForgotPasswordPageState
           ),
           child: SafeArea(
             child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 26,
                 22,
                 26,
@@ -315,21 +307,19 @@ class _ForgotPasswordPageState
                         onPressed: _loading
                             ? null
                             : () async {
-                                final canLeave =
-                                    await _handleBack();
+                                final navigator = Navigator.of(context);
+                                final canLeave = await _handleBack();
 
                                 if (!mounted) {
                                   return;
                                 }
 
                                 if (canLeave) {
-                                  Navigator.of(context)
-                                      .pop();
+                                  navigator.pop();
                                 }
                               },
                         icon: const Icon(
-                          Icons
-                              .arrow_back_ios_new_rounded,
+                          Icons.arrow_back_ios_new_rounded,
                           color: Colors.white,
                         ),
                       ),
@@ -341,12 +331,9 @@ class _ForgotPasswordPageState
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 38),
-
                   AnimatedSwitcher(
-                    duration:
-                        const Duration(
+                    duration: const Duration(
                       milliseconds: 250,
                     ),
                     child: switch (_step) {
@@ -375,17 +362,14 @@ class _ForgotPasswordPageState
         key: const ValueKey(
           'forgot-identifier',
         ),
-        crossAxisAlignment:
-            CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Icon(
             Icons.lock_reset_rounded,
             size: 62,
             color: AppColors.cyan,
           ),
-
           const SizedBox(height: 22),
-
           const Text(
             'Recuperar contraseña',
             textAlign: TextAlign.center,
@@ -395,9 +379,7 @@ class _ForgotPasswordPageState
               fontWeight: FontWeight.w800,
             ),
           ),
-
           const SizedBox(height: 12),
-
           Text(
             'Ingresá tu DNI o correo. Vamos a enviar un código de 6 dígitos al email registrado en tu cuenta.',
             textAlign: TextAlign.center,
@@ -409,17 +391,12 @@ class _ForgotPasswordPageState
               height: 1.45,
             ),
           ),
-
           const SizedBox(height: 32),
-
           TextFormField(
-            controller:
-                _identifierController,
+            controller: _identifierController,
             enabled: !_loading,
-            keyboardType:
-                TextInputType.emailAddress,
-            textInputAction:
-                TextInputAction.done,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
             autofillHints: const [
               AutofillHints.username,
               AutofillHints.email,
@@ -429,34 +406,27 @@ class _ForgotPasswordPageState
                 _sendCode();
               }
             },
-            decoration:
-                const InputDecoration(
+            decoration: const InputDecoration(
               prefixIcon: Icon(
-                Icons
-                    .person_outline_rounded,
+                Icons.person_outline_rounded,
               ),
               hintText: 'DNI o correo',
             ),
             validator: (value) {
-              if (value == null ||
-                  value.trim().isEmpty) {
+              if (value == null || value.trim().isEmpty) {
                 return 'Ingresá tu DNI o correo.';
               }
 
               return null;
             },
           ),
-
           const SizedBox(height: 22),
-
           FilledButton(
-            onPressed:
-                _loading ? null : _sendCode,
+            onPressed: _loading ? null : _sendCode,
             child: _loading
                 ? const SizedBox.square(
                     dimension: 22,
-                    child:
-                        CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2.4,
                       color: Colors.white,
                     ),
@@ -465,9 +435,7 @@ class _ForgotPasswordPageState
                     'Enviar código',
                   ),
           ),
-
           const SizedBox(height: 18),
-
           Text(
             'Por seguridad, no informamos si el DNI o correo está registrado.',
             textAlign: TextAlign.center,
@@ -495,17 +463,14 @@ class _ForgotPasswordPageState
         key: const ValueKey(
           'forgot-reset',
         ),
-        crossAxisAlignment:
-            CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Icon(
             Icons.mark_email_read_rounded,
             size: 62,
             color: AppColors.cyan,
           ),
-
           const SizedBox(height: 22),
-
           const Text(
             'Ingresá el código',
             textAlign: TextAlign.center,
@@ -515,9 +480,7 @@ class _ForgotPasswordPageState
               fontWeight: FontWeight.w800,
             ),
           ),
-
           const SizedBox(height: 12),
-
           Text(
             'Enviamos un código de 6 dígitos al correo asociado a tu cuenta.',
             textAlign: TextAlign.center,
@@ -529,9 +492,7 @@ class _ForgotPasswordPageState
               height: 1.45,
             ),
           ),
-
           const SizedBox(height: 10),
-
           Text(
             'Cuenta: $_identifierUsed',
             textAlign: TextAlign.center,
@@ -542,17 +503,12 @@ class _ForgotPasswordPageState
               fontSize: 13,
             ),
           ),
-
           const SizedBox(height: 28),
-
           TextFormField(
-            controller:
-                _codeController,
+            controller: _codeController,
             enabled: !_loading,
-            keyboardType:
-                TextInputType.number,
-            textInputAction:
-                TextInputAction.next,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
             maxLength: 6,
             textAlign: TextAlign.center,
             style: const TextStyle(
@@ -560,8 +516,7 @@ class _ForgotPasswordPageState
               fontWeight: FontWeight.w800,
               letterSpacing: 6,
             ),
-            decoration:
-                const InputDecoration(
+            decoration: const InputDecoration(
               counterText: '',
               prefixIcon: Icon(
                 Icons.pin_outlined,
@@ -569,29 +524,21 @@ class _ForgotPasswordPageState
               hintText: '000000',
             ),
             validator: (value) {
-              final code =
-                  (value ?? '')
-                      .trim();
+              final code = (value ?? '').trim();
 
-              if (!RegExp(r'^\d{6}$')
-                  .hasMatch(code)) {
+              if (!RegExp(r'^\d{6}$').hasMatch(code)) {
                 return 'Ingresá el código de 6 dígitos.';
               }
 
               return null;
             },
           ),
-
           const SizedBox(height: 14),
-
           TextFormField(
-            controller:
-                _newPasswordController,
+            controller: _newPasswordController,
             enabled: !_loading,
-            obscureText:
-                _obscureNewPassword,
-            textInputAction:
-                TextInputAction.next,
+            obscureText: _obscureNewPassword,
+            textInputAction: TextInputAction.next,
             autofillHints: const [
               AutofillHints.newPassword,
             ],
@@ -599,29 +546,24 @@ class _ForgotPasswordPageState
               prefixIcon: const Icon(
                 Icons.lock_outline_rounded,
               ),
-              hintText:
-                  'Nueva contraseña',
+              hintText: 'Nueva contraseña',
               suffixIcon: IconButton(
                 onPressed: _loading
                     ? null
                     : () {
                         setState(() {
-                          _obscureNewPassword =
-                              !_obscureNewPassword;
+                          _obscureNewPassword = !_obscureNewPassword;
                         });
                       },
                 icon: Icon(
                   _obscureNewPassword
-                      ? Icons
-                          .visibility_outlined
-                      : Icons
-                          .visibility_off_outlined,
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                 ),
               ),
             ),
             validator: (value) {
-              final password =
-                  value ?? '';
+              final password = value ?? '';
 
               if (password.isEmpty) {
                 return 'Ingresá una nueva contraseña.';
@@ -631,27 +573,20 @@ class _ForgotPasswordPageState
                 return 'Debe tener al menos 8 caracteres.';
               }
 
-              if (!RegExp(r'[A-Za-z]')
-                      .hasMatch(password) ||
-                  !RegExp(r'\d')
-                      .hasMatch(password)) {
+              if (!RegExp(r'[A-Za-z]').hasMatch(password) ||
+                  !RegExp(r'\d').hasMatch(password)) {
                 return 'Debe incluir letras y números.';
               }
 
               return null;
             },
           ),
-
           const SizedBox(height: 12),
-
           TextFormField(
-            controller:
-                _confirmPasswordController,
+            controller: _confirmPasswordController,
             enabled: !_loading,
-            obscureText:
-                _obscureConfirmPassword,
-            textInputAction:
-                TextInputAction.done,
+            obscureText: _obscureConfirmPassword,
+            textInputAction: TextInputAction.done,
             autofillHints: const [
               AutofillHints.newPassword,
             ],
@@ -662,57 +597,43 @@ class _ForgotPasswordPageState
             },
             decoration: InputDecoration(
               prefixIcon: const Icon(
-                Icons
-                    .lock_reset_rounded,
+                Icons.lock_reset_rounded,
               ),
-              hintText:
-                  'Repetir nueva contraseña',
+              hintText: 'Repetir nueva contraseña',
               suffixIcon: IconButton(
                 onPressed: _loading
                     ? null
                     : () {
                         setState(() {
-                          _obscureConfirmPassword =
-                              !_obscureConfirmPassword;
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
                         });
                       },
                 icon: Icon(
                   _obscureConfirmPassword
-                      ? Icons
-                          .visibility_outlined
-                      : Icons
-                          .visibility_off_outlined,
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                 ),
               ),
             ),
             validator: (value) {
-              if (value == null ||
-                  value.isEmpty) {
+              if (value == null || value.isEmpty) {
                 return 'Repetí la nueva contraseña.';
               }
 
-              if (value !=
-                  _newPasswordController
-                      .text) {
+              if (value != _newPasswordController.text) {
                 return 'Las contraseñas no coinciden.';
               }
 
               return null;
             },
           ),
-
           const SizedBox(height: 22),
-
           FilledButton(
-            onPressed:
-                _loading
-                    ? null
-                    : _resetPassword,
+            onPressed: _loading ? null : _resetPassword,
             child: _loading
                 ? const SizedBox.square(
                     dimension: 22,
-                    child:
-                        CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2.4,
                       color: Colors.white,
                     ),
@@ -721,33 +642,25 @@ class _ForgotPasswordPageState
                     'Cambiar contraseña',
                   ),
           ),
-
           const SizedBox(height: 8),
-
           TextButton(
-            onPressed:
-                _loading
-                    ? null
-                    : _resendCode,
+            onPressed: _loading ? null : _resendCode,
             child: const Text(
               'Reenviar código',
               style: TextStyle(
                 color: AppColors.cyan,
-                fontWeight:
-                    FontWeight.w700,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-
           TextButton(
-            onPressed:
-                _loading
-                    ? null
-                    : () {
-                        setState(() {
-                          _step = 1;
-                        });
-                      },
+            onPressed: _loading
+                ? null
+                : () {
+                    setState(() {
+                      _step = 1;
+                    });
+                  },
             child: const Text(
               'Cambiar DNI o correo',
               style: TextStyle(
@@ -769,18 +682,15 @@ class _ForgotPasswordPageState
       key: const ValueKey(
         'forgot-success',
       ),
-      crossAxisAlignment:
-          CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
           width: 92,
           height: 92,
-          margin:
-              const EdgeInsets.symmetric(
+          margin: const EdgeInsets.symmetric(
             horizontal: 110,
           ),
-          decoration:
-              BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.cyan.withValues(
               alpha: 0.14,
             ),
@@ -796,9 +706,7 @@ class _ForgotPasswordPageState
             color: AppColors.cyan,
           ),
         ),
-
         const SizedBox(height: 28),
-
         const Text(
           'Contraseña actualizada',
           textAlign: TextAlign.center,
@@ -808,9 +716,7 @@ class _ForgotPasswordPageState
             fontWeight: FontWeight.w800,
           ),
         ),
-
         const SizedBox(height: 14),
-
         Text(
           'Tu contraseña fue cambiada correctamente. Ya podés volver a iniciar sesión con tu nueva clave.',
           textAlign: TextAlign.center,
@@ -822,18 +728,14 @@ class _ForgotPasswordPageState
             height: 1.45,
           ),
         ),
-
         const SizedBox(height: 16),
-
         Container(
-          padding:
-              const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white.withValues(
               alpha: 0.07,
             ),
-            borderRadius:
-                BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: Colors.white.withValues(
                 alpha: 0.12,
@@ -841,12 +743,10 @@ class _ForgotPasswordPageState
             ),
           ),
           child: Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(
-                Icons
-                    .fingerprint_rounded,
+                Icons.fingerprint_rounded,
                 color: AppColors.cyan,
               ),
               const SizedBox(width: 12),
@@ -854,8 +754,7 @@ class _ForgotPasswordPageState
                 child: Text(
                   'Por seguridad, si tenías el ingreso biométrico activado, vas a poder configurarlo nuevamente después de iniciar sesión con tu nueva contraseña.',
                   style: TextStyle(
-                    color: Colors.white
-                        .withValues(
+                    color: Colors.white.withValues(
                       alpha: 0.78,
                     ),
                     fontSize: 13,
@@ -866,9 +765,7 @@ class _ForgotPasswordPageState
             ],
           ),
         ),
-
         const SizedBox(height: 30),
-
         FilledButton.icon(
           onPressed: () {
             Navigator.of(context).pop();

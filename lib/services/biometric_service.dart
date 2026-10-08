@@ -23,39 +23,27 @@ class BiometricException implements Exception {
 class BiometricService {
   BiometricService._();
 
-  static final BiometricService instance =
-      BiometricService._();
+  static final BiometricService instance = BiometricService._();
 
-  static const String _enabledKey =
-      'biometric_login_enabled';
+  static const String _enabledKey = 'biometric_login_enabled';
 
-  static const String _identifierKey =
-      'biometric_login_identifier';
+  static const String _identifierKey = 'biometric_login_identifier';
 
-  static const String _passwordKey =
-      'biometric_login_password';
+  static const String _passwordKey = 'biometric_login_password';
 
-  final LocalAuthentication _localAuth =
-      LocalAuthentication();
+  final LocalAuthentication _localAuth = LocalAuthentication();
 
-  final FlutterSecureStorage _storage =
-      const FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-  );
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   Future<bool> isAvailable() async {
     try {
-      final supported =
-          await _localAuth.isDeviceSupported();
+      final supported = await _localAuth.isDeviceSupported();
 
       if (!supported) {
         return false;
       }
 
-      final availableBiometrics =
-          await _localAuth.getAvailableBiometrics();
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
 
       return availableBiometrics.isNotEmpty;
     } catch (_) {
@@ -98,8 +86,7 @@ class BiometricService {
     }
 
     final authenticated = await authenticate(
-      reason:
-          'Confirmá tu identidad para activar el ingreso biométrico.',
+      reason: 'Confirmá tu identidad para activar el ingreso biométrico.',
     );
 
     if (!authenticated) {
@@ -124,8 +111,7 @@ class BiometricService {
     );
   }
 
-  Future<BiometricCredentials>
-      getCredentialsAfterAuthentication() async {
+  Future<BiometricCredentials> getCredentialsAfterAuthentication() async {
     if (!await isEnabled()) {
       throw const BiometricException(
         'El ingreso biométrico no está activado.',
@@ -133,8 +119,7 @@ class BiometricService {
     }
 
     final authenticated = await authenticate(
-      reason:
-          'Confirmá tu identidad para ingresar a Ruta Gen.',
+      reason: 'Confirmá tu identidad para ingresar a Ruta Gen.',
     );
 
     if (!authenticated) {
