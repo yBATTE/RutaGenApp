@@ -537,6 +537,7 @@ class ApiRutaGenRepository
       ),
       points: _intValue(data['pointsCost'] ?? data['points']),
       stock: _intValue(data['totalStock'] ?? data['stock']),
+      stockTrackingEnabled: data['stockTrackingEnabled'] != false,
       imageUrl: _rewardImageUrl(data['imagePath'] ?? data['imageUrl']),
       imageUrls: gallery,
       icon: Icons.card_giftcard_rounded,

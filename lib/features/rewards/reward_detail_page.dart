@@ -42,7 +42,7 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
   @override
   Widget build(BuildContext context) {
     final canRedeem = widget.availablePoints >= widget.reward.points &&
-        widget.reward.stock > 0;
+        widget.reward.hasStock;
     final reward = widget.reward;
     final availablePoints = widget.availablePoints;
     final gallery = reward.gallery;
@@ -158,11 +158,11 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
               ),
             ),
           ),
-          Center(
+          if (reward.stockTrackingEnabled) Center(
             child: Text(
-              reward.stock > 0 ? '✓ Stock disponible' : 'Sin stock disponible',
+              reward.hasStock ? '✓ Stock disponible' : 'Sin stock disponible',
               style: TextStyle(
-                color: reward.stock > 0 ? AppColors.success : AppColors.danger,
+                color: reward.hasStock ? AppColors.success : AppColors.danger,
                 fontWeight: FontWeight.w700,
               ),
             ),

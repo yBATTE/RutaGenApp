@@ -332,11 +332,11 @@ class _RewardsPageState extends State<RewardsPage> {
                     final rewards =
                         (snapshot.data ?? const <Reward>[]).where((reward) {
                       if (_filter == 1) {
-                        return reward.points <= points && reward.stock > 0;
+                        return reward.points <= points && reward.hasStock;
                       }
 
                       if (_filter == 2) {
-                        return reward.stock > 0;
+                        return reward.hasStock;
                       }
 
                       return true;
@@ -456,12 +456,12 @@ class _RewardsPageState extends State<RewardsPage> {
                                               fontWeight: FontWeight.w900,
                                             ),
                                           ),
-                                          Text(
-                                            reward.stock > 0
+                                          if (reward.stockTrackingEnabled) Text(
+                                            reward.hasStock
                                                 ? 'Stock disponible'
                                                 : 'Sin stock',
                                             style: TextStyle(
-                                              color: reward.stock > 0
+                                              color: reward.hasStock
                                                   ? AppColors.success
                                                   : AppColors.danger,
                                               fontWeight: FontWeight.w700,

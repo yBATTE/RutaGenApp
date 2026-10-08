@@ -117,6 +117,7 @@ class Reward {
     required this.subtitle,
     required this.points,
     required this.stock,
+    this.stockTrackingEnabled = true,
     required this.icon,
     this.imageUrl,
     this.imageUrls = const [],
@@ -127,6 +128,7 @@ class Reward {
   final String subtitle;
   final int points;
   final int stock;
+  final bool stockTrackingEnabled;
   final IconData icon;
   final String? imageUrl;
   final List<String> imageUrls;
@@ -137,7 +139,7 @@ class Reward {
           ? const []
           : [imageUrl!];
 
-  bool get hasStock => stock > 0;
+  bool get hasStock => !stockTrackingEnabled || stock > 0;
 }
 
 class GiftReward {
