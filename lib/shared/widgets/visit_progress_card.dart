@@ -13,11 +13,13 @@ class VisitProgressCard extends StatelessWidget {
   final VisitProgress progress;
   final VoidCallback onOpenGifts;
 
-  static const _stations = <({String slug, String label})>[
-    (slug: 'combustibles-canning-1', label: 'Canning 1'),
-    (slug: 'combustibles-canning-2', label: 'Canning 2'),
-    (slug: 'catania', label: 'Catania'),
-  ];
+
+static const _stations = <({String slug, String label})>[
+  (slug: 'combustibles-canning-1', label: 'Canning 1'),
+  (slug: 'combustibles-canning-2', label: 'Vision Canning'),
+  (slug: 'catania', label: 'Catania'),
+];
+
 
   bool _visited(String slug) {
     return progress.visitedStations.any((station) => station.slug == slug);

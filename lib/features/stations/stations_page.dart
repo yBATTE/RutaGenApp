@@ -45,7 +45,7 @@ class _StationsPageState extends State<StationsPage> {
       longitude: -58.4344220,
     ),
     _LocalStation(
-      name: 'Combustibles Canning 2',
+      name: 'Vision Canning',
       address: 'Canning, Buenos Aires',
       zone: 'Canning',
       latitude: -34.9614132,
