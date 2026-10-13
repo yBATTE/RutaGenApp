@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -15,6 +14,8 @@ import '../../shared/widgets/visit_progress_card.dart';
 import '../../shared/widgets/section_title.dart';
 import '../movements/movements_page.dart';
 import '../news/news_detail_page.dart';
+import '../news/news_list_page.dart';
+import '../news/news_carousel.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -26,6 +27,7 @@ class HomePage extends StatefulWidget {
     required this.onOpenNotifications,
     required this.unreadNotifications,
     required this.onOpenGiftRewards,
+    required this.onCompleteDni,
     this.isActive = true,
   });
 
@@ -37,6 +39,7 @@ class HomePage extends StatefulWidget {
   final VoidCallback onOpenNotifications;
   final int unreadNotifications;
   final VoidCallback onOpenGiftRewards;
+  final VoidCallback onCompleteDni;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -156,7 +159,9 @@ class _HomePageState extends State<HomePage>
             SliverAppBar(
               systemOverlayStyle: AppTheme.darkBackgroundOverlay,
               pinned: true,
-              expandedHeight: 118,
+              expandedHeight: 142 +
+                  (MediaQuery.textScalerOf(context).scale(26) - 26) +
+                  (MediaQuery.textScalerOf(context).scale(14) - 14),
               backgroundColor: AppColors.navy,
               foregroundColor: Colors.white,
               title: const RutaGenLogo(
@@ -228,7 +233,7 @@ class _HomePageState extends State<HomePage>
                 ),
                 const SizedBox(width: 6),
               ],
-              flexibleSpace: const FlexibleSpaceBar(
+              flexibleSpace: FlexibleSpaceBar(
                 background: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -240,47 +245,121 @@ class _HomePageState extends State<HomePage>
                       ],
                     ),
                   ),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 62, 18, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hola, ${widget.user.firstName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Este es el resumen de tu cuenta',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.white70, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Stack(
+                children: [
+                  const Positioned.fill(
+                    child: FractionallySizedBox(
+                      heightFactor: .45,
+                      alignment: Alignment.topCenter,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppColors.navyDeep, Color(0xFF074482)],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: _PointsCard(
+                      user: widget.user,
+                      formattedPoints: _formatPoints(widget.user.pointsBalance),
+                      onRewardsTap: () => widget.onNavigate(3),
+                    ),
+                  ),
+                ],
               ),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 18,
-                22,
+                12,
                 18,
                 32,
               ),
               sliver: SliverList.list(
                 children: [
-                  Text(
-                    'Hola, ${widget.user.firstName}',
-                    style: const TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
+                  SectionTitle(
+                    'Novedades',
+                    action: 'Ver todas ›',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => NewsListPage(repository: widget.repository),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Este es el resumen de tu cuenta',
-                    style: TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (!widget.user.identityVerified) ...[
-                    IdentityVerificationBanner(
-                      onViewStations: () => widget.onNavigate(1),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  _PointsCard(
-                    user: widget.user,
-                    formattedPoints: _formatPoints(
-                      widget.user.pointsBalance,
-                    ),
-                    onRewardsTap: () => widget.onNavigate(3),
+                  const SizedBox(height: 10),
+                  FutureBuilder<List<NewsItem>>(
+                    future: _news,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const SizedBox(
+                          height: 148,
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return _MessageCard(
+                          icon: Icons.cloud_off_rounded,
+                          title: 'No pudimos cargar las novedades',
+                          message: 'Deslizá hacia abajo para reintentar.',
+                          onTap: _refresh,
+                        );
+                      }
+
+                      final items = snapshot.data ?? [];
+
+                      if (items.isEmpty) {
+                        return const _MessageCard(
+                          icon: Icons.campaign_outlined,
+                          title: 'No hay novedades publicadas',
+                          message: 'Cuando tengamos algo nuevo, aparecerá acá.',
+                        );
+                      }
+
+                      return NewsCarousel(
+                        items: items,
+                        onOpen: _openNewsDetail,
+                      );
+                    },
                   ),
                   PointsPromotionBanner(
                     repository: widget.repository,
@@ -320,6 +399,14 @@ class _HomePageState extends State<HomePage>
                     ],
                   ),
                   const SizedBox(height: 22),
+                  if (!widget.user.identityVerified) ...[
+                    IdentityVerificationBanner(
+                      needsDni: widget.user.dni.trim().isEmpty,
+                      onCompleteDni: widget.onCompleteDni,
+                      onViewStations: () => widget.onNavigate(1),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   if (widget.user.identityVerified)
                     FutureBuilder<VisitProgress>(
                       future: _visitProgress,
@@ -397,67 +484,6 @@ class _HomePageState extends State<HomePage>
                       );
                     },
                   ),
-                  const SizedBox(height: 26),
-                  const SectionTitle('Novedades'),
-                  const SizedBox(height: 10),
-                  FutureBuilder<List<NewsItem>>(
-                    future: _news,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SizedBox(
-                          height: 250,
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return _MessageCard(
-                          icon: Icons.cloud_off_rounded,
-                          title: 'No pudimos cargar las novedades',
-                          message: 'Deslizá hacia abajo para reintentar.',
-                          onTap: _refresh,
-                        );
-                      }
-
-                      final items = snapshot.data ?? [];
-
-                      if (items.isEmpty) {
-                        return const _MessageCard(
-                          icon: Icons.campaign_outlined,
-                          title: 'No hay novedades publicadas',
-                          message: 'Cuando tengamos algo nuevo, aparecerá acá.',
-                        );
-                      }
-
-                      return SizedBox(
-                        height: 285,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: items.length,
-                          separatorBuilder: (_, __) => const SizedBox(
-                            width: 12,
-                          ),
-                          itemBuilder: (context, index) {
-                            final width = MediaQuery.sizeOf(
-                              context,
-                            ).width;
-
-                            return SizedBox(
-                              width: width >= 700 ? 360 : width - 62,
-                              child: _NewsCard(
-                                item: items[index],
-                                onTap: () => _openNewsDetail(
-                                  items[index],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
@@ -485,7 +511,7 @@ class _PointsCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -531,79 +557,86 @@ class _PointsCard extends StatelessWidget {
               ),
             ),
           ),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'PUNTOS DISPONIBLES',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.7,
-                      ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'PUNTOS DISPONIBLES',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.7,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$formattedPoints pts',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 34,
+                              fontWeight: FontWeight.w900,
+                              height: 1.05,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          memberCode != null && memberCode.isNotEmpty
+                              ? 'Socio $memberCode'
+                              : 'Usá tus puntos para canjear premios',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '$formattedPoints pts',
+                  ),
+                  const SizedBox(width: 12),
+                  CircleAvatar(
+                    radius: 27,
+                    backgroundColor: const Color(0xFF0A66C7),
+                    child: Text(
+                      user.initials.isEmpty ? 'RG' : user.initials,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 34,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        height: 1.05,
                       ),
                     ),
-                    const SizedBox(height: 9),
-                    Text(
-                      memberCode != null && memberCode.isNotEmpty
-                          ? 'Socio $memberCode'
-                          : 'Usá tus puntos para canjear premios',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: onRewardsTap,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.navy,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      icon: const Icon(
-                        Icons.card_giftcard_rounded,
-                        size: 18,
-                      ),
-                      label: const Text(
-                        'Ver premios',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: const Color(0xFF0A66C7),
-                child: Text(
-                  user.initials.isEmpty ? 'RG' : user.initials,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: onRewardsTap,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.navy,
+                  minimumSize: const Size.fromHeight(40),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.card_giftcard_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Ver premios',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: 20),
+                  ],
                 ),
               ),
             ],
@@ -794,150 +827,6 @@ class _LatestMovementCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NewsCard extends StatelessWidget {
-  const _NewsCard({
-    required this.item,
-    required this.onTap,
-  });
-
-  final NewsItem item;
-  final VoidCallback onTap;
-
-  String _date(DateTime value) {
-    const months = [
-      'ene',
-      'feb',
-      'mar',
-      'abr',
-      'may',
-      'jun',
-      'jul',
-      'ago',
-      'sep',
-      'oct',
-      'nov',
-      'dic',
-    ];
-
-    return '${value.day} ${months[value.month - 1]} ${value.year}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: SizedBox(
-                width: double.infinity,
-                child: CachedNetworkImage(
-                  imageUrl: item.thumbnailUrl,
-                  fit: BoxFit.cover,
-                  fadeInDuration: const Duration(
-                    milliseconds: 180,
-                  ),
-                  memCacheWidth: 900,
-                  maxWidthDiskCache: 1200,
-                  placeholder: (context, url) {
-                    return const ColoredBox(
-                      color: Color(0xFFE8F3FF),
-                      child: Center(
-                        child: SizedBox.square(
-                          dimension: 28,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppColors.blue,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                  errorWidget: (context, url, error) {
-                    return const ColoredBox(
-                      color: Color(0xFFE8F3FF),
-                      child: Center(
-                        child: Icon(
-                          Icons.image_not_supported_outlined,
-                          color: AppColors.blue,
-                          size: 42,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                15,
-                13,
-                15,
-                15,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  if (item.hasDescription) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      item.description!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        _date(
-                          item.displayDate,
-                        ),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Spacer(),
-                      const Text(
-                        'Ver detalle',
-                        style: TextStyle(
-                          color: AppColors.blue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

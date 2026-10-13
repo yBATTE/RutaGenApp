@@ -9,6 +9,7 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/push_notification_service.dart';
 import '../account/account_page.dart';
+import '../account/complete_dni_page.dart';
 import '../draws/draws_page.dart';
 import '../gifts/gift_rewards_page.dart';
 import '../home/home_page.dart';
@@ -210,14 +211,24 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _openCompleteDni() async {
+    final updated = await Navigator.of(context).push<UserModel>(
+      MaterialPageRoute(builder: (_) => const CompleteDniPage()),
+    );
+    if (!mounted || updated == null) return;
+    _handleUserUpdated(updated);
+  }
+
   void _goTo(int index) {
     if (index == 2 && !_currentUser.identityVerified) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Primero tenés que verificar tu cuenta presentando el DNI en una estación Ruta GEN.',
+              _currentUser.dni.trim().isEmpty
+                  ? 'Completá tu DNI en Mi cuenta antes de verificar tu identidad en la estación.'
+                  : 'Primero tenés que verificar tu cuenta presentando el DNI en una estación Ruta GEN.',
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -324,6 +335,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onOpenNotifications: _openNotifications,
         unreadNotifications: _unreadNotifications,
         onOpenGiftRewards: _openGiftRewards,
+        onCompleteDni: _openCompleteDni,
       ),
       StationsPage(
         repository: widget.repository,

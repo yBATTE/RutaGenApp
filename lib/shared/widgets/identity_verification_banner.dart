@@ -6,9 +6,13 @@ class IdentityVerificationBanner extends StatelessWidget {
   const IdentityVerificationBanner({
     super.key,
     required this.onViewStations,
+    this.needsDni = false,
+    this.onCompleteDni,
   });
 
   final VoidCallback onViewStations;
+  final bool needsDni;
+  final VoidCallback? onCompleteDni;
 
   @override
   Widget build(BuildContext context) {
@@ -23,31 +27,33 @@ class IdentityVerificationBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 19,
                 backgroundColor: Color(0xFFFFE2A8),
                 foregroundColor: Color(0xFF8A5700),
                 child: Icon(Icons.badge_outlined, size: 21),
               ),
-              SizedBox(width: 11),
+              const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Activá tu cuenta',
+                      needsDni ? 'Completá tu DNI' : 'Verificá tu identidad',
                       style: TextStyle(
                         color: AppColors.ink,
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Presentá tu DNI en una estación Ruta GEN para comenzar a sumar puntos, canjear premios y participar de beneficios.',
+                      needsDni
+                          ? 'Para verificar tu identidad, primero cargá tu DNI desde la app. Después presentá el documento físico en una estación Ruta GEN.'
+                          : 'Presentá tu DNI en una estación Ruta GEN para comenzar a sumar puntos, canjear premios y participar de beneficios.',
                       style: TextStyle(
                         color: Color(0xFF755A2B),
                         fontSize: 12.5,
@@ -64,13 +70,13 @@ class IdentityVerificationBanner extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonalIcon(
-              onPressed: onViewStations,
+              onPressed: needsDni ? onCompleteDni : onViewStations,
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFFFE9BE),
                 foregroundColor: const Color(0xFF6F4800),
               ),
-              icon: const Icon(Icons.local_gas_station_rounded),
-              label: const Text('Ver estaciones para verificarme'),
+              icon: Icon(needsDni ? Icons.badge_outlined : Icons.local_gas_station_rounded),
+              label: Text(needsDni ? 'Completar mi DNI' : 'Ver estaciones para verificarme'),
             ),
           ),
         ],

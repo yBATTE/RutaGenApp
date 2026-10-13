@@ -1,0 +1,44 @@
+RUTA GEN - INICIO CON NOVEDADES DESTACADAS
+
+Cambios
+- Saludo dentro del encabezado azul, más compacto.
+- Saldo y botón Ver premios de ancho completo.
+- Novedades inmediatamente debajo del saldo.
+- Carrusel compacto con imagen, título, acceso al detalle e indicadores.
+- Ver todas abre un listado paginado con Cargar más, actualización y reintento.
+- Se conservan los accesos a QR, premios, movimientos, verificación DNI,
+  promociones de puntos, visitas del mes y premios regalados.
+- No requiere cambios en el backend ni nuevas dependencias.
+- Las novedades usan las publicaciones reales de la API; no se agregan
+  promociones ni estaciones de ejemplo del diseño de referencia.
+
+Instalación recomendada sobre tu proyecto actual
+1. Extraé este ZIP en una carpeta NUEVA, diferente de tu app actual.
+2. Abrí PowerShell dentro de la carpeta extraída.
+3. Ejecutá:
+   & .\Aplicar-Inicio-Novedades.ps1
+   Si tu proyecto está en otra ubicación:
+   & .\Aplicar-Inicio-Novedades.ps1 -AppPath 'C:\ruta\a\ruta_gen_app'
+4. El script respalda los archivos existentes y copia solo los tres Dart
+   modificados/agregados; conserva configuración, versión y firma de tu app.
+5. En la carpeta de tu app actual ejecutá:
+   flutter analyze
+   flutter run
+
+Validación pendiente en tu entorno
+Este entorno no dispone del SDK Flutter. Se revisaron el código, los imports,
+el orden de los bloques y la integridad del ZIP, pero no se pudo ejecutar
+flutter analyze, compilar ni probar en dispositivo.
+
+Probar: inicio, deslizamiento y detalle de novedades; Ver todas y Cargar más;
+actualización deslizando hacia abajo; QR, premios, movimientos y regalos.
+Revisar también un teléfono chico y texto ampliado.
+
+Archivos del cambio
+lib/features/home/home_page.dart
+lib/features/news/news_carousel.dart
+lib/features/news/news_list_page.dart
+
+El ZIP contiene el código completo de la app enviada, más estos cambios y
+estas instrucciones. Para instalarlos, usá el script en vez de sobrescribir
+la configuración de Android/iOS o pubspec.yaml.

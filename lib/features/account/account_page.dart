@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/user_model.dart';
 import 'edit_profile_page.dart';
+import 'complete_dni_page.dart';
 import 'delete_account_page.dart';
 import 'security_page.dart';
 import 'terms_page.dart';
@@ -35,6 +36,13 @@ class AccountPage extends StatelessWidget {
     if (updatedUser != null) {
       onUserUpdated(updatedUser);
     }
+  }
+
+  Future<void> _openCompleteDni(BuildContext context) async {
+    final updated = await Navigator.of(context).push<UserModel>(
+      MaterialPageRoute(builder: (_) => const CompleteDniPage()),
+    );
+    if (updated != null) onUserUpdated(updated);
   }
 
   Future<void> _openSecurity(
@@ -92,6 +100,15 @@ class AccountPage extends StatelessWidget {
           _ProfileCard(user: user),
           const SizedBox(height: 16),
           _PointsSummary(user: user),
+          if (user.dni.trim().isEmpty && !user.identityVerified) ...[
+            const SizedBox(height: 16),
+            _AccountOption(
+              icon: Icons.badge_outlined,
+              title: 'Completar DNI',
+              subtitle: 'Necesario antes de verificar tu identidad en la estación',
+              onTap: () => _openCompleteDni(context),
+            ),
+          ],
           const SizedBox(height: 20),
           const _SectionTitle(
             title: 'Información personal',

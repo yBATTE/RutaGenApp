@@ -134,11 +134,18 @@ class TermsPage extends StatelessWidget {
             content:
                 'Estos términos no limitan los derechos reconocidos por la normativa argentina aplicable en materia de defensa del consumidor, protección de datos personales y demás derechos que correspondan al usuario.',
           ),
+                    const _TermSection(
+            number: '15',
+            title: 'Uso de APP YPF',
+            content:
+                'Grupo GEN promueve el uso de APP YPF como medio de pago para las cargas de combustible realizadas en las estaciones participantes de Ruta GEN.\n\n'
+                'Invitamos a los usuarios a abonar sus cargas mediante APP YPF y consultar los beneficios disponibles en dicha aplicación, sujetos a sus propias condiciones y vigencia.',
+          ),
           const SizedBox(height: 18),
           const Center(
             child: Text(
-              'Ruta Gen · Términos versión 0.2\n'
-              'Última actualización: 21/09/2026',
+              'Ruta Gen · Términos versión 0.3\n'
+              'Última actualización: 13/10/2026',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.muted,

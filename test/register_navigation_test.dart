@@ -15,9 +15,8 @@ import 'auth_flow_test.dart' show customer, payload;
 Future<void> openForm(
   WidgetTester tester,
   AuthService auth,
-  VoidCallback completed, {
-  String dni = '12345678',
-}) async {
+  VoidCallback completed,
+) async {
   tester.view.physicalSize = const Size(1000, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -47,10 +46,11 @@ Future<void> openForm(
   await tester.tap(find.text('Abrir registro'));
   await tester.pumpAndSettle();
   final fields = find.byType(TextFormField);
+  expect(fields, findsNWidgets(4));
+  expect(find.text('DNI (opcional)'), findsNothing);
   final values = [
     'Prueba',
     'Registro',
-    dni,
     'prueba@example.com',
     'Prueba1234',
   ];
@@ -91,7 +91,6 @@ void main() {
       tester,
       AuthService.forTesting(apiClient: api),
       () => navigations++,
-      dni: '',
     );
     expect(find.text('Ingresá tu DNI.'), findsNothing);
     await tester.tap(find.text('Crear mi cuenta'));

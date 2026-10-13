@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import 'complete_dni_page.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({
@@ -169,6 +170,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ? 'Pendiente de completar'
                     : widget.user.dni,
               ),
+              if (widget.user.dni.trim().isEmpty && !widget.user.identityVerified)
+                TextButton.icon(
+                  icon: const Icon(Icons.badge_outlined),
+                  label: const Text('Completar mi DNI'),
+                  onPressed: _saving ? null : () async {
+                    final updated = await Navigator.of(context).push<UserModel>(
+                      MaterialPageRoute(builder: (_) => const CompleteDniPage()),
+                    );
+                    if (!context.mounted || updated == null) return;
+                    Navigator.of(context).pop(updated);
+                  },
+                ),
               const SizedBox(height: 12),
               _ReadOnlyField(
                 icon: Icons.email_outlined,
@@ -260,7 +273,7 @@ class _InformationBanner extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Si no completaste el DNI al registrarte, podrás completarlo al verificar tu identidad presencialmente en una estación Ruta GEN. Por seguridad, el DNI y el correo electrónico no pueden modificarse desde la aplicación.',
+              'Completá tu DNI desde la app antes de verificar tu identidad en una estación Ruta GEN. Una vez guardado, no podrás modificarlo desde la app. El correo electrónico no puede modificarse.',
               style: TextStyle(
                 color: AppColors.navy,
                 height: 1.4,

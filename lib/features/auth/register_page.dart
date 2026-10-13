@@ -25,7 +25,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   final _lastNameController = TextEditingController();
 
-  final _dniController = TextEditingController();
 
   final _emailController = TextEditingController();
 
@@ -44,7 +43,6 @@ class _RegisterPageState extends State<RegisterPage> {
     _pageController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _dniController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
 
@@ -83,21 +81,19 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _register() async {
     if (_loading || _completed) return;
     setState(() => _loading = true);
-    final dni = _dniController.text.trim();
     final password = _passwordController.text;
 
     try {
       final UserModel user;
       if (_accountCreated) {
         user = await _auth.login(
-          identifier: dni.isNotEmpty ? dni : _emailController.text.trim(),
+          identifier: _emailController.text.trim(),
           password: password,
         );
       } else {
         user = await _auth.register(
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
-          dni: dni,
           email: _emailController.text.trim(),
           password: password,
           acceptedTerms: _accepted,
@@ -236,27 +232,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Ingresá tu apellido.';
-                              }
-
-                              return null;
-                            },
-                          ),
-                          _RegisterField(
-                            controller: _dniController,
-                            icon: Icons.badge_outlined,
-                            hint: 'DNI (opcional)',
-                            enabled: !_loading,
-                            keyboardType: TextInputType.number,
-                            textInputAction: TextInputAction.next,
-                            validator: (value) {
-                              final dni = value?.trim() ?? '';
-
-                              if (dni.isEmpty) {
-                                return null;
-                              }
-
-                              if (!RegExp(r'^\d{6,12}$').hasMatch(dni)) {
-                                return 'El DNI debe contener entre 6 y 12 números.';
                               }
 
                               return null;

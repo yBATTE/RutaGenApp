@@ -342,6 +342,17 @@ class AuthService {
      ACTUALIZAR TELÉFONO
   ============================================================ */
 
+  Future<UserModel> completeDni(String dni) async {
+    final response = await _apiClient.patch(
+      '/users/me/dni',
+      body: {'dni': dni.trim()},
+    );
+    _apiClient.invalidateCache('/auth/me');
+    final user = _extractUser(_extractData(response));
+    _validateCustomer(user);
+    return user;
+  }
+
   Future<UserModel> updatePhone(
     String phone,
   ) async {
