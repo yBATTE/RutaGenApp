@@ -12,7 +12,6 @@ import 'models/user_model.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
 import 'services/push_notification_service.dart';
-import 'shared/widgets/ruta_gen_logo.dart';
 
 class RutaGenApp extends StatefulWidget {
   const RutaGenApp({
@@ -62,7 +61,12 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
      * y luego vuelve a abrirla, initState se ejecuta
      * nuevamente y se solicita la biometría.
      */
-    _authenticateOnStartup();
+    // Mostrar el logo y el indicador antes de abrir diálogos nativos.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_authenticateOnStartup());
+      }
+    });
   }
 
   @override
@@ -95,6 +99,13 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
     await _authenticateWithBiometrics(
       showErrors: false,
     );
+
+    // Con sesión, _bindPushAfterAuthentication ya inicializa Firebase.
+    // Sin sesión, preparar las notificaciones después de mostrar el login.
+    // Ningún permiso de notificaciones bloquea el primer frame ni Face ID.
+    if (mounted && _currentUser == null) {
+      await PushNotificationService.instance.initialize();
+    }
   }
 
   /* ============================================================
@@ -374,12 +385,34 @@ class _SessionLoadingPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              RutaGenLogo(),
+              ClipRRect(
+                borderRadius: BorderRadius.all(Radius.circular(24)),
+                child: Image(
+                  image: AssetImage('assets/icon/app_icon.png'),
+                  width: 144,
+                  height: 144,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Ruta GEN',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               SizedBox(
                 height: 32,
               ),
               CircularProgressIndicator(
                 color: AppColors.cyan,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Cargando...',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ],
           ),
