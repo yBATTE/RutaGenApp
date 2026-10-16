@@ -43,7 +43,7 @@ class IdentityVerificationBanner extends StatelessWidget {
                   children: [
                     Text(
                       needsDni ? 'Completá tu DNI' : 'Verificá tu identidad',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.ink,
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
@@ -52,9 +52,9 @@ class IdentityVerificationBanner extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       needsDni
-                          ? 'Para verificar tu identidad, primero cargá tu DNI desde la app. Después presentá el documento físico en una estación Ruta GEN.'
-                          : 'Presentá tu DNI en una estación Ruta GEN para comenzar a sumar puntos, canjear premios y participar de beneficios.',
-                      style: TextStyle(
+                          ? 'Para verificar tu identidad, primero cargá tu DNI desde la app. Después acercate a una estación Ruta GEN y presentá tu DNI físico o digital al personal para verificar tu cuenta.'
+                          : 'Acercate a una estación Ruta GEN y presentá tu DNI físico o digital al personal. Van a escanear el documento y confirmar tu identidad para habilitar los puntos y beneficios.',
+                      style: const TextStyle(
                         color: Color(0xFF755A2B),
                         fontSize: 12.5,
                         height: 1.4,

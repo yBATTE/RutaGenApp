@@ -235,7 +235,7 @@ class _HomePageState extends State<HomePage>
               ],
               flexibleSpace: FlexibleSpaceBar(
                 background: DecoratedBox(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -314,6 +314,14 @@ class _HomePageState extends State<HomePage>
               ),
               sliver: SliverList.list(
                 children: [
+                  if (widget.user.dni.trim().isEmpty || !widget.user.identityVerified) ...[
+                    IdentityVerificationBanner(
+                      needsDni: widget.user.dni.trim().isEmpty,
+                      onCompleteDni: widget.onCompleteDni,
+                      onViewStations: () => widget.onNavigate(1),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   SectionTitle(
                     'Novedades',
                     action: 'Ver todas ›',
@@ -399,14 +407,6 @@ class _HomePageState extends State<HomePage>
                     ],
                   ),
                   const SizedBox(height: 22),
-                  if (!widget.user.identityVerified) ...[
-                    IdentityVerificationBanner(
-                      needsDni: widget.user.dni.trim().isEmpty,
-                      onCompleteDni: widget.onCompleteDni,
-                      onViewStations: () => widget.onNavigate(1),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   if (widget.user.identityVerified)
                     FutureBuilder<VisitProgress>(
                       future: _visitProgress,
@@ -717,7 +717,7 @@ class _LatestMovementCard extends StatelessWidget {
   }
 
   String _details() {
-    if (movement.type == MovementType.adjustment) {
+    if (movement.type == MovementType.adjustment || movement.isGift) {
       final date = movement.argentinaDate;
       final timestamp = '${date.day.toString().padLeft(2, '0')}/'
           '${date.month.toString().padLeft(2, '0')}/'
@@ -731,7 +731,7 @@ class _LatestMovementCard extends StatelessWidget {
 
     final item = movement.productName?.trim();
 
-    if (movement.type == MovementType.redemption || movement.isGift) {
+    if (movement.type == MovementType.redemption) {
       return [
         if (station != null && station.isNotEmpty) station,
         if (item != null && item.isNotEmpty) item,
@@ -775,7 +775,7 @@ class _LatestMovementCard extends StatelessWidget {
                         ? AppColors.blue
                         : AppColors.danger,
                 child: Icon(
-                  movement.type == MovementType.adjustment
+                  movement.isGiftRedeemed ? Icons.check_circle_rounded : movement.type == MovementType.adjustment
                       ? Icons.tune_rounded
                       : movement.type == MovementType.load
                           ? Icons.local_gas_station_rounded
@@ -791,7 +791,7 @@ class _LatestMovementCard extends StatelessWidget {
                   children: [
                     Text(
                       movement.title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
@@ -800,7 +800,7 @@ class _LatestMovementCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _details(),
-                      maxLines: 2,
+                      maxLines: movement.isGift ? null : 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.muted,
@@ -813,7 +813,7 @@ class _LatestMovementCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 isGift
-                    ? '0 pts'
+                    ? 'Gratis'
                     : '${positive ? '+' : '-'}${movement.points.abs()}',
                 style: TextStyle(
                   color: isGift

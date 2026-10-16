@@ -6,7 +6,6 @@ import '../../data/models.dart';
 
 class NewsCarousel extends StatefulWidget {
   const NewsCarousel({super.key, required this.items, required this.onOpen});
-
   final List<NewsItem> items;
   final ValueChanged<NewsItem> onOpen;
 
@@ -15,14 +14,12 @@ class NewsCarousel extends StatefulWidget {
 }
 
 class _NewsCarouselState extends State<NewsCarousel> {
-  final _controller = PageController(viewportFraction: .72);
+  final _controller = PageController(viewportFraction: .80);
   int _current = 0;
 
   @override
   void didUpdateWidget(covariant NewsCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // A refresh can remove articles or change their order. Reset both the
-    // visible page and its indicator rather than retaining an invalid index.
     if (oldWidget.items.map((item) => item.id).join('|') !=
         widget.items.map((item) => item.id).join('|')) {
       _current = 0;
@@ -40,162 +37,120 @@ class _NewsCarouselState extends State<NewsCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    final extraHeight = MediaQuery.textScalerOf(context).scale(16) - 16;
     if (widget.items.isEmpty) return const SizedBox.shrink();
-    if (widget.items.length == 1) {
-      return SizedBox(
-        height: 148 + extraHeight * 3,
-        child: NewsPreviewCard(
-          item: widget.items.first,
-          onTap: () => widget.onOpen(widget.items.first),
-        ),
-      );
-    }
-    return Column(
-      children: [
-        SizedBox(
-          height: 148 + extraHeight * 3,
-          child: PageView.builder(
-            controller: _controller,
-            padEnds: false,
-            itemCount: widget.items.length,
-            onPageChanged: (index) => setState(() => _current = index),
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: NewsPreviewCard(
-                item: widget.items[index],
-                onTap: () => widget.onOpen(widget.items[index]),
-              ),
-            ),
-          ),
-        ),
-        if (widget.items.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(widget.items.length, (index) {
-                return Semantics(
-                  label: 'Novedad ${index + 1} de ${widget.items.length}',
-                  selected: index == _current,
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: index == _current
-                          ? AppColors.blue
-                          : AppColors.blue.withValues(alpha: .18),
-                    ),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: LayoutBuilder(builder: (context, constraints) {
+          if (widget.items.length == 1) {
+            return NewsPreviewCard(item: widget.items.first,
+              onTap: () => widget.onOpen(widget.items.first));
+          }
+          final side = constraints.maxWidth * .80 - 10;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: side + NewsPreviewCard.titleHeight(context),
+                child: PageView.builder(
+                  controller: _controller,
+                  padEnds: false,
+                  itemCount: widget.items.length,
+                  onPageChanged: (index) => setState(() => _current = index),
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: NewsPreviewCard(item: widget.items[index],
+                      onTap: () => widget.onOpen(widget.items[index])),
                   ),
-                );
-              }),
-            ),
-          ),
-      ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(widget.items.length, (index) => Semantics(
+                    label: 'Novedad ${index + 1} de ${widget.items.length}',
+                    selected: index == _current,
+                    child: Container(
+                      width: index == _current ? 18 : 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(9),
+                        color: index == _current ? AppColors.blue : AppColors.blue.withValues(alpha: .18),
+                      ),
+                    ),
+                  )),
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
     );
   }
 }
 
 class NewsPreviewCard extends StatelessWidget {
   const NewsPreviewCard({super.key, required this.item, required this.onTap});
-
   final NewsItem item;
   final VoidCallback onTap;
+
+  static double titleHeight(BuildContext context) =>
+      28 + MediaQuery.textScalerOf(context).scale(16) * 1.25 * 2;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       label: 'Abrir ${item.displayTitle}',
-      child: ClipRRect(
+      child: Material(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            CachedNetworkImage(
-              imageUrl: item.thumbnailUrl,
-              fit: BoxFit.cover,
-              memCacheWidth: 900,
-              maxWidthDiskCache: 1200,
-              fadeInDuration: const Duration(milliseconds: 180),
-              placeholder: (_, __) => const ColoredBox(
-                color: Color(0xFFE8F3FF),
-                child: Center(
-                  child: SizedBox.square(
-                    dimension: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AspectRatio(
+                key: ValueKey('news-square-${item.id}'),
+                aspectRatio: 1,
+                child: CachedNetworkImage(
+                  imageUrl: item.thumbnailUrl,
+                  fit: BoxFit.contain,
+                  memCacheWidth: 900,
+                  maxWidthDiskCache: 1200,
+                  fadeInDuration: const Duration(milliseconds: 180),
+                  placeholder: (_, __) => const ColoredBox(
+                    color: Color(0xFFE8F3FF),
+                    child: Center(child: SizedBox.square(dimension: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2))),
+                  ),
+                  errorWidget: (_, __, ___) => const ColoredBox(
+                    color: Color(0xFFE8F3FF),
+                    child: Center(child: Icon(Icons.campaign_outlined,
+                      color: AppColors.blue, size: 38)),
                   ),
                 ),
               ),
-              errorWidget: (_, __, ___) => const ColoredBox(
-                color: Color(0xFF084B90),
-                child: Center(
-                  child: Icon(Icons.campaign_outlined,
-                      color: Colors.white54, size: 38),
-                ),
-              ),
-            ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [.25, 1],
-                  colors: [Colors.transparent, Color(0xEB001B38)],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.blue,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'NOVEDAD',
-                  style: TextStyle(color: Colors.white, fontSize: 9,
-                      fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.displayTitle,
-                      maxLines: 2,
+              SizedBox(
+                height: titleHeight(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(children: [
+                    Expanded(child: Text(item.displayTitle, maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 16,
-                          height: 1.15, fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.blue,
-                    child: Icon(Icons.arrow_forward_rounded,
-                        color: Colors.white, size: 18),
-                  ),
-                ],
+                      style: const TextStyle(color: AppColors.ink, fontSize: 16,
+                        height: 1.25, fontWeight: FontWeight.w800))),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_rounded, color: AppColors.blue, size: 20),
+                  ]),
+                ),
               ),
-            ),
-            Positioned.fill(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(onTap: onTap),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

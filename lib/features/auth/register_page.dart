@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../account/terms_page.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
@@ -373,6 +374,14 @@ class _RegisterPageState extends State<RegisterPage> {
                               style: TextStyle(fontSize: 14),
                             ),
                           ),
+                        ),
+                      if (_step == 1)
+                        TextButton(
+                          onPressed: _loading ? null : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(builder: (_) => const TermsPage(
+                              acceptedTermsAt: null, showAcceptance: false)),
+                          ),
+                          child: const Text('Leer términos y condiciones'),
                         ),
                       FilledButton(
                         onPressed: canSubmit ? _continue : null,

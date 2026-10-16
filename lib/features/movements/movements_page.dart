@@ -356,7 +356,7 @@ class _MovementsPageState extends State<MovementsPage> {
                                 ? AppColors.blue
                                 : AppColors.danger,
                         child: Icon(
-                          movement.type == MovementType.adjustment
+                          movement.isGiftRedeemed ? Icons.check_circle_rounded : movement.type == MovementType.adjustment
                               ? Icons.tune_rounded
                               : movement.type == MovementType.load
                                   ? Icons.local_gas_station_rounded
@@ -402,7 +402,7 @@ class _MovementsPageState extends State<MovementsPage> {
                       const SizedBox(width: 8),
                       Text(
                         isGift
-                            ? '0 pts'
+                            ? 'Gratis'
                             : '${positive ? '+' : '-'}${_points(movement.points)}',
                         style: TextStyle(
                           color: isGift

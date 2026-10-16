@@ -12,6 +12,7 @@ class AppNotification {
     required this.action,
     required this.createdAt,
     required this.read,
+    this.giftId,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class AppNotification {
   final String action;
   final DateTime createdAt;
   final bool read;
+  final String? giftId;
 
   AppNotification copyWithRead() {
     return AppNotification(
@@ -29,6 +31,7 @@ class AppNotification {
       action: action,
       createdAt: createdAt,
       read: true,
+      giftId: giftId,
     );
   }
 
@@ -42,6 +45,7 @@ class AppNotification {
           DateTime.tryParse((json['createdAt'] ?? '').toString())?.toLocal() ??
               DateTime.now(),
       read: json['read'] == true,
+      giftId: json['giftId']?.toString(),
     );
   }
 }
@@ -109,11 +113,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (item.action == 'NOTIFICATIONS') {
       await _close();
     } else {
-      await _close(action: item.action);
+      await _close(action: item.action, giftId: item.giftId);
     }
   }
 
-  Future<void> _close({String? action}) async {
+  Future<void> _close({String? action, String? giftId}) async {
     if (_closing) return;
     _closing = true;
 
@@ -144,7 +148,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (!mounted) return;
     Navigator.of(context).pop();
     if (action != null) {
-      PushNotificationService.instance.openAction(action);
+      PushNotificationService.instance.openAction(action, giftId: giftId);
     }
   }
 

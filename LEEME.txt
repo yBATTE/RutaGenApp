@@ -1,43 +1,20 @@
-RUTA GEN - ARRANQUE / PANTALLA BLANCA IOS
+RUTA GEN — LOADER ANIMADO PERSONALIZADO
 
-Parche preparado para el ZIP RutaGen-Mobile-Arranque-20261013-163243.zip.
+Copiar lib, assets y pubspec.yaml sobre la raíz del proyecto y reemplazar los archivos.
+Incluye app.dart con la espera del primer cuadro antes de Face ID, el GIF original (121 cuadros, bucle infinito) y la declaración del asset.
+No cambia dependencias ni versión (1.0.3+6). Si cambiaste tu versión local, conservá ese valor al combinar pubspec.yaml.
+No reemplaza términos de MAZARA, sorteos ni backend.
 
-Cambios:
-- iOS muestra fondo azul y logo real desde la pantalla nativa de lanzamiento.
-- Flutter muestra logo, indicador animado y Cargando... al recuperar la sesion.
-- Firebase y los permisos push dejan de bloquear runApp.
-- Face ID comienza despues del primer frame; las notificaciones se inicializan
-  despues de recuperar la sesion o de mostrar el login.
+La pantalla de carga Flutter muestra el GIF centrado sobre fondo blanco. El logo, texto y puntos ya forman parte de la animación. Hay un indicador de respaldo mientras se decodifica o si el asset falla. La barra del sistema usa iconos oscuros sobre blanco.
+Se sale de la pantalla al finalizar la recuperación de sesión; no se obliga a esperar toda la animación. No reproduce sonido.
 
-Aplicacion en Windows:
-1. Extraer este ZIP en una carpeta aparte, por ejemplo en el Escritorio:
-   RutaGen-Arranque-iOS-Parche
-2. Abrir PowerShell y ejecutar:
-   Set-Location "C:\Users\lucki\Desktop\Ruta Gen\mobile\ruta_gen_app"
-   & "$env:USERPROFILE\Desktop\RutaGen-Arranque-iOS-Parche\Aplicar-Arranque.ps1"
-   flutter clean
-   flutter pub get
+Cerrar flutter run con q, y ejecutar:
+flutter pub get
+flutter analyze --no-pub
+flutter test
+flutter run
 
-El script guarda los archivos anteriores en una carpeta backup-arranque
-al lado de ruta_gen_app antes de reemplazarlos.
-Tambien podes copiar lib, ios y pubspec.yaml manualmente sobre el proyecto,
-despues de guardar una copia de los archivos anteriores.
+Cerrar completamente la app y volver a abrir para probar el inicio.
+El GIF es local y no necesita descargarse. En iPhone requiere nueva compilación. La pantalla nativa inicial iOS es estática: el GIF aparece cuando Flutter empieza a renderizar. Este paquete conserva los cambios iOS que ya aplicaste.
 
-Prueba en Mac / iPhone:
-- Llevar estos cambios a la Mac (incluyendo ios y pubspec.yaml).
-- Ejecutar flutter clean y flutter pub get.
-- Compilar e instalar una nueva build iOS; una APK no actualiza el iPhone.
-- Verificar varias aperturas desde cero con sesion guardada y sin sesion.
-- Probar Face ID aceptado y cancelado, internet lento/sin internet y permisos
-  de notificaciones aceptados y rechazados.
-- Comprobar que las notificaciones siguen llegando y abren su destino.
-- iOS puede conservar la pantalla de lanzamiento anterior. Si persiste en
-  una instalacion de prueba, desinstalar y reinstalar (se pierde la sesion local).
-
-La pantalla nativa inicial tiene logo fijo. El indicador se anima cuando
-Flutter muestra su primer frame. No se agrega una demora artificial.
-
-Validacion realizada: XML, YAML, recursos PNG y contenido del ZIP.
-No se pudo ejecutar Flutter ni compilar iOS en este entorno.
-La comprobacion final necesita una nueva build probada en el iPhone.
-No se cambio el numero de version/build.
+Verificación local: sintaxis Dart, YAML, asset declarado, 121 cuadros decodificados, bucle e integridad ZIP. No hay Flutter ni Xcode en este entorno; falta la prueba del dispositivo.

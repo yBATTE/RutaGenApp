@@ -10,9 +10,11 @@ class GiftRewardsPage extends StatefulWidget {
   const GiftRewardsPage({
     super.key,
     required this.repository,
+    this.initialGiftId,
   });
 
   final RutaGenRepository repository;
+  final String? initialGiftId;
 
   @override
   State<GiftRewardsPage> createState() => _GiftRewardsPageState();
@@ -21,11 +23,39 @@ class GiftRewardsPage extends StatefulWidget {
 class _GiftRewardsPageState extends State<GiftRewardsPage> {
   late Future<List<GiftReward>> _future;
   int _filter = 0;
+  bool _openingInitialGift = false;
+  bool _initialGiftFailed = false;
 
   @override
   void initState() {
     super.initState();
     _future = widget.repository.getGiftRewards();
+    if (widget.initialGiftId?.trim().isNotEmpty == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openInitialGift());
+    }
+  }
+
+  Future<void> _openInitialGift() async {
+    if (!mounted || _openingInitialGift || widget.initialGiftId == null) return;
+    final id = widget.initialGiftId!.trim();
+    setState(() { _openingInitialGift = true; _initialGiftFailed = false; });
+    try {
+      final repository = widget.repository;
+      final GiftReward gift;
+      if (repository is GiftRewardDetailRepository) {
+        gift = await (repository as GiftRewardDetailRepository).getGiftReward(id);
+      } else {
+        final items = await _future;
+        gift = items.firstWhere((item) => item.id == id,
+          orElse: () => throw StateError('Regalo no encontrado'));
+      }
+      if (!mounted) return;
+      _openGift(gift);
+    } catch (_) {
+      if (mounted) setState(() => _initialGiftFailed = true);
+    } finally {
+      if (mounted) setState(() => _openingInitialGift = false);
+    }
   }
 
   Future<void> _refresh() async {
@@ -49,10 +79,10 @@ class _GiftRewardsPageState extends State<GiftRewardsPage> {
 
   String _date(DateTime? value) {
     if (value == null) return 'Sin vencimiento';
-    final date = value.toLocal();
+    final date = value.toUtc().subtract(const Duration(hours: 3));
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year}';
+        '${date.year} · ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   void _openGift(GiftReward gift) {
@@ -79,6 +109,11 @@ class _GiftRewardsPageState extends State<GiftRewardsPage> {
       ),
       body: Column(
         children: [
+          if (_openingInitialGift) const LinearProgressIndicator(),
+          if (_initialGiftFailed) MaterialBanner(
+            content: const Text('No pudimos abrir ese regalo en tu cuenta. Podés volver a intentar.'),
+            actions: [TextButton(onPressed: _openInitialGift, child: const Text('Reintentar'))],
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 2),
             child: Container(
@@ -332,7 +367,7 @@ class _GiftCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            gift.statusLabel,
+                            '${gift.statusLabel} · Gratis',
                             style: TextStyle(
                               color: _statusColor,
                               fontSize: 11,
@@ -344,7 +379,7 @@ class _GiftCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Vence ${dateFormatter(gift.expiresAt)}',
+                              gift.expiresAt == null ? 'Sin vencimiento' : 'Vence ${dateFormatter(gift.expiresAt)}',
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.muted,
@@ -503,6 +538,7 @@ class _GiftDetailSheet extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 18),
+              const _InfoRow(label: 'Valor', value: 'Gratis'),
               _InfoRow(label: 'Código', value: gift.giftCode),
               _InfoRow(label: 'Emitido', value: dateFormatter(gift.issuedAt)),
               if (gift.expiresAt != null)

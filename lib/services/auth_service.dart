@@ -568,7 +568,7 @@ class AuthService {
   ) {
     if (!user.isCustomer) {
       throw const ApiException(
-        message: 'Esta aplicación es exclusivamente para clientes.',
+        message: 'Esta aplicación es exclusivamente para clientes. Si sos vendedor, ingresá desde el sistema de Playa.',
         statusCode: 403,
       );
     }

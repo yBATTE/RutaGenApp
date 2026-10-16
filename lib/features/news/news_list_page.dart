@@ -73,19 +73,11 @@ class _NewsListPageState extends State<NewsListPage> {
             for (final item in _items)
               Padding(
                 padding: const EdgeInsets.only(bottom: 14),
-                child: SizedBox(
-                  height: 210 +
-                      (MediaQuery.textScalerOf(context).scale(16) - 16) * 3,
-                  child: NewsPreviewCard(
-                    item: item,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => NewsDetailPage(
-                          repository: widget.repository,
-                          initialItem: item,
-                        ),
-                      ),
-                    ),
+                child: NewsPreviewCard(
+                  item: item,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => NewsDetailPage(
+                      repository: widget.repository, initialItem: item)),
                   ),
                 ),
               ),

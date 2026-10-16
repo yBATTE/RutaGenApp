@@ -3,6 +3,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
 import '../../data/ruta_gen_repository.dart';
 import '../../models/user_model.dart';
+import '../../shared/utils/draw_date_format.dart';
 import 'legacy_draws_page.dart';
 
 class DrawsPage extends StatefulWidget {
@@ -48,9 +49,7 @@ class _DrawsPageState extends State<DrawsPage> {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.border)),
       child: child);
-  String day(BuildContext context, DateTime? value) => value == null
-      ? '—'
-      : MaterialLocalizations.of(context).formatMediumDate(value.toLocal());
+  String day(BuildContext context, DateTime? value) => formatDrawDate(value);
   String lastDay(BuildContext context, DateTime? exclusiveEnd) =>
       day(context, exclusiveEnd?.subtract(const Duration(days: 1)));
 
@@ -189,9 +188,7 @@ class _DrawDetailState extends State<_DrawDetail> {
   Widget build(BuildContext context) {
     final item = widget.event;
     final byLiters = item.metric == 'LITERS';
-    final fmt = MaterialLocalizations.of(context);
-    String day(DateTime? d) =>
-        d == null ? '—' : fmt.formatMediumDate(d.toLocal());
+    String day(DateTime? d) => formatDrawDate(d);
     return Scaffold(
         appBar: AppBar(title: Text(item.title)),
         backgroundColor: const Color(0xFFF6F9FD),

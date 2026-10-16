@@ -275,11 +275,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _refreshNotifications();
   }
 
-  void _openGiftRewards() {
+  void _openGiftRewards({String? giftId}) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GiftRewardsPage(
           repository: widget.repository,
+          initialGiftId: giftId,
         ),
       ),
     );
@@ -295,7 +296,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
-      switch (action) {
+      switch (action.action) {
         case 'HOME':
           _goTo(0);
           break;
@@ -304,7 +305,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           break;
         case 'GIFT_REWARDS':
         case 'GIFTS':
-          _openGiftRewards();
+          _openGiftRewards(giftId: action.giftId);
           break;
         case 'STATIONS':
           _goTo(1);

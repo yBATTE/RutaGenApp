@@ -44,3 +44,8 @@ abstract interface class TemporaryQrRepository {
 abstract interface class PointsPromotionRepository {
   Future<PointsPromotion?> getPointsPromotion();
 }
+
+/// Permite abrir un regalo propio sin depender de la primera página del listado.
+abstract interface class GiftRewardDetailRepository {
+  Future<GiftReward> getGiftReward(String giftId);
+}

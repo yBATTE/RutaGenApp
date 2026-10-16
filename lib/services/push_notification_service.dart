@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import '../data/notification_destination.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 
@@ -28,11 +29,13 @@ class PushMessage {
     required this.title,
     required this.body,
     required this.action,
+    this.giftId,
   });
 
   final String title;
   final String body;
   final String action;
+  final String? giftId;
 }
 
 class PushNotificationService {
@@ -45,7 +48,7 @@ class PushNotificationService {
   final StreamController<PushMessage> _foregroundController =
       StreamController<PushMessage>.broadcast();
 
-  final ValueNotifier<String?> actionNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<NotificationDestination?> actionNotifier = ValueNotifier<NotificationDestination?>(null);
 
   bool _available = false;
   bool _listenersReady = false;
@@ -168,6 +171,7 @@ class PushNotificationService {
             title: notification?.title ?? 'Ruta Gen',
             body: notification?.body ?? 'Tenés una nueva notificación.',
             action: _actionFromMessage(message),
+            giftId: NotificationDestination.fromData(message.data).giftId,
           ),
         );
       },
@@ -198,35 +202,21 @@ class PushNotificationService {
      ACCIONES
   ============================================================ */
 
-  String _actionFromMessage(RemoteMessage message) {
-    final action = (message.data['destination'] ??
-            message.data['action'] ??
-            'NOTIFICATIONS')
-        .toString()
-        .trim()
-        .toUpperCase();
-
-    return action.isEmpty ? 'NOTIFICATIONS' : action;
-  }
+  String _actionFromMessage(RemoteMessage message) => NotificationDestination.fromData(message.data).action;
 
   void _openRemoteMessage(RemoteMessage message) {
-    openAction(
-      _actionFromMessage(message),
-    );
+    final target = NotificationDestination.fromData(message.data);
+    openAction(target.action, giftId: target.giftId);
   }
 
-  void openAction(String action) {
-    final cleanAction = action.trim().toUpperCase();
-
-    actionNotifier.value = cleanAction.isEmpty ? 'NOTIFICATIONS' : cleanAction;
+  void openAction(String action, {String? giftId}) {
+    actionNotifier.value = NotificationDestination.fromData({'action': action, 'giftId': giftId});
   }
 
-  String? consumePendingAction() {
-    final action = actionNotifier.value;
-
+  NotificationDestination? consumePendingAction() {
+    final target = actionNotifier.value;
     actionNotifier.value = null;
-
-    return action;
+    return target;
   }
 
   /* ============================================================

@@ -10,7 +10,8 @@ class ApiRutaGenRepository
     implements
         RutaGenRepository,
         TemporaryQrRepository,
-        PointsPromotionRepository {
+        PointsPromotionRepository,
+        GiftRewardDetailRepository {
   ApiRutaGenRepository({
     ApiClient? apiClient,
   }) : _apiClient = apiClient ?? ApiClient.instance;
@@ -367,33 +368,26 @@ class ApiRutaGenRepository
     );
 
     if (kind == 'GIFT' || kind == 'GIFT_REWARD') {
-      final visitBonus = source == 'VISIT_BONUS';
-      final title = visitBonus
-          ? 'Beneficio por visitas'
-          : source == 'WELCOME'
-              ? 'Premio de bienvenida'
-              : 'Premio regalado';
-      final statusText = switch (status) {
+      final event = _stringValue(data['movementType']).toUpperCase();
+      final redeemed = event == 'GIFT_REDEEMED' || (event.isEmpty && status == 'REDEEMED');
+      final statusText = redeemed ? 'Canje realizado' : switch (status) {
         'AVAILABLE' => 'Disponible para canjear',
-        'REDEEMED' => 'Canjeado',
+        'REDEEMED' => 'Ya canjeado',
         'EXPIRED' => 'Vencido',
         'CANCELLED' => 'Cancelado',
         _ => '',
       };
-      final details = <String>[
-        rewardName,
-        if (campaignName.isNotEmpty) campaignName,
-        if (stationName.isNotEmpty) stationName,
-        if (statusText.isNotEmpty) statusText,
-      ];
-
       return Movement(
         id: _stringValue(data['id'] ?? data['_id']),
-        title: title,
-        subtitle: details.join('\n'),
-        date: date,
+        giftId: _stringValue(data['giftId'] ?? data['id']),
+        giftEvent: event.isEmpty ? (redeemed ? 'GIFT_REDEEMED' : 'GIFT_RECEIVED') : event,
+        giftStatus: status,
+        title: redeemed ? 'Regalo canjeado' : 'Premio recibido',
+        subtitle: [rewardName, if (campaignName.isNotEmpty) campaignName,
+          if (redeemed && stationName.isNotEmpty) stationName, if (statusText.isNotEmpty) statusText].join('\n'),
+        date: _dateValue(data['occurredAt'] ?? (redeemed ? data['redeemedAt'] : data['issuedAt']) ?? data['createdAt']),
         points: 0,
-        type: visitBonus ? MovementType.visitBonus : MovementType.gift,
+        type: source == 'VISIT_BONUS' ? MovementType.visitBonus : MovementType.gift,
         stationName: stationName.isEmpty ? null : stationName,
         productName: rewardName,
       );
@@ -615,7 +609,7 @@ class ApiRutaGenRepository
     final responses = await Future.wait([
       _movementSource('/loads/me', requestedCount,
           filters: {'status': 'CONFIRMED'}),
-      _movementSource('/rewards/me', requestedCount),
+      _movementSource('/rewards/me', requestedCount, filters: {'giftEvents': 'true'}),
       _movementSource('/users/me/point-adjustments', requestedCount),
     ]);
 
@@ -637,7 +631,7 @@ class ApiRutaGenRepository
           ),
     ]..sort((a, b) {
         final dateOrder = b.date.compareTo(a.date);
-        return dateOrder != 0 ? dateOrder : a.id.compareTo(b.id);
+        return dateOrder != 0 ? dateOrder : b.id.compareTo(a.id);
       });
 
     final start = (safePage - 1) * safeLimit;
@@ -647,6 +641,17 @@ class ApiRutaGenRepository
     final end =
         requestedEnd > movements.length ? movements.length : requestedEnd;
     return movements.sublist(start, end);
+  }
+
+  @override
+  Future<GiftReward> getGiftReward(String giftId) async {
+    final cleanId = giftId.trim();
+    if (cleanId.isEmpty) throw const ApiException(message: 'El regalo no es válido.');
+    final response = await _apiClient.get('/rewards/gifts/me/${Uri.encodeComponent(cleanId)}');
+    final payload = _asMap(response['data']);
+    final gift = _asMap(payload['gift']);
+    if (gift.isEmpty) throw const ApiException(message: 'No se encontró ese regalo en tu cuenta.');
+    return _giftRewardFromData(gift);
   }
 
   @override

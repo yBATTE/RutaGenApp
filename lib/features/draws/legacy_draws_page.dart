@@ -1,3 +1,4 @@
+import '../../shared/utils/draw_date_format.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -112,10 +113,7 @@ class _LegacyDrawsPageState extends State<LegacyDrawsPage> {
                           textAlign: TextAlign.center)),
                 ]);
               }
-              final dateFormat = MaterialLocalizations.of(context);
-              String day(DateTime? value) => value == null
-                  ? '—'
-                  : dateFormat.formatMediumDate(value.toLocal());
+              String day(DateTime? value) => formatDrawDate(value);
               final isUpcoming = ranking.status == 'UPCOMING';
               return ListView(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 36),

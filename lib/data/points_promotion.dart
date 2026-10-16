@@ -5,11 +5,13 @@ class PointsPromotion {
     required this.multiplier,
     required this.minimumFuelLiters,
     this.promotionName,
+    this.maxPointsPerLoad = 70,
   });
 
   final double multiplier;
   final double minimumFuelLiters;
   final String? promotionName;
+  final int maxPointsPerLoad;
 
   bool get shouldDisplay => multiplier != 1;
   bool get isBonus => multiplier > 1;
@@ -31,10 +33,9 @@ class PointsPromotion {
   String get equivalence =>
       'Cada litro suma ${formatNumber(multiplier)} puntos.';
 
-  String get conditions => minimumFuelLiters > 0
-      ? 'En cargas desde ${formatNumber(minimumFuelLiters)} L. '
-          'Los puntos se redondean al entero más cercano.'
-      : 'Los puntos se redondean al entero más cercano.';
+  String get conditions => '${minimumFuelLiters > 0 ? 'En cargas desde ${formatNumber(minimumFuelLiters)} L. ' : ''}'
+      'Máximo $maxPointsPerLoad puntos por carga, después del multiplicador. '
+      'Los puntos se redondean al entero más cercano.';
 
   static String formatNumber(double value) {
     final text = value.toString().replaceFirst(RegExp(r'\.0$'), '');
@@ -62,6 +63,7 @@ class PointsPromotion {
       multiplier: multiplier,
       minimumFuelLiters: minimum,
       promotionName: name.isEmpty ? null : name,
+      maxPointsPerLoad: json['maxPointsPerLoad'] is num && (json['maxPointsPerLoad'] as num) > 0 ? (json['maxPointsPerLoad'] as num).toInt() : 70,
     );
   }
 }

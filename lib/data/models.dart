@@ -175,9 +175,9 @@ class GiftReward {
   final DateTime? redeemedAt;
   final String? redeemedStationName;
 
-  bool get isAvailable => status.toUpperCase() == 'AVAILABLE';
+  bool get isAvailable => status.toUpperCase() == 'AVAILABLE' && !isExpired;
   bool get isRedeemed => status.toUpperCase() == 'REDEEMED';
-  bool get isExpired => status.toUpperCase() == 'EXPIRED';
+  bool get isExpired => status.toUpperCase() == 'EXPIRED' || (status.toUpperCase() == 'AVAILABLE' && expiresAt != null && !expiresAt!.isAfter(DateTime.now()));
   bool get isCancelled => status.toUpperCase() == 'CANCELLED';
 
   bool get canShowQr =>
@@ -203,6 +203,7 @@ class GiftReward {
   }
 
   String get statusLabel {
+    if (isExpired) return 'Vencido';
     switch (status.toUpperCase()) {
       case 'AVAILABLE':
         return 'Disponible';
@@ -279,6 +280,9 @@ class Movement {
     this.liters,
     this.amount,
     this.pricePerLiter,
+    this.giftId,
+    this.giftEvent,
+    this.giftStatus,
   });
 
   final String id;
@@ -293,6 +297,11 @@ class Movement {
   final double? liters;
   final double? amount;
   final double? pricePerLiter;
+  final String? giftId;
+  final String? giftEvent;
+  final String? giftStatus;
+
+  bool get isGiftRedeemed => isGift && (giftEvent == 'GIFT_REDEEMED' || (giftEvent == null && giftStatus == 'REDEEMED'));
 
   // Componentes de fecha/hora para mostrar en Argentina. La fecha original
   // conserva el instante real para ordenar los movimientos.

@@ -110,22 +110,20 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(bottom: 36),
               children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 580),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 10,
-                    child: Image.network(
-                      item!.imageUrl,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const ColoredBox(
-                        color: Color(0xFFE8F3FF),
-                        child: Center(
-                          child: Icon(
-                            Icons.image_not_supported_outlined,
-                            color: AppColors.blue,
-                            size: 58,
-                          ),
+                Semantics(
+                  button: true,
+                  label: 'Ampliar imagen de la novedad',
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => _FullNewsImage(imageUrl: item.imageUrl))),
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Image.network(item!.imageUrl, width: double.infinity,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Center(child: Icon(
+                            Icons.image_not_supported_outlined, color: AppColors.blue, size: 58)),
                         ),
                       ),
                     ),
@@ -181,4 +179,22 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
       ),
     );
   }
+}
+
+
+class _FullNewsImage extends StatelessWidget {
+  const _FullNewsImage({required this.imageUrl});
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.black,
+    appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white,
+      title: const Text('Imagen completa')),
+    body: Center(child: InteractiveViewer(minScale: 1, maxScale: 5,
+      child: Image.network(imageUrl, fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const Text('No se pudo cargar la imagen.',
+          style: TextStyle(color: Colors.white))),
+    )),
+  );
 }

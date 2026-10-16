@@ -61,11 +61,9 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
      * y luego vuelve a abrirla, initState se ejecuta
      * nuevamente y se solicita la biometría.
      */
-    // Mostrar el logo y el indicador antes de abrir diálogos nativos.
+    // Esperar a que el motor dibuje el loader antes de abrir Face ID.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        unawaited(_authenticateOnStartup());
-      }
+      unawaited(_startAfterLoadingFrame());
     });
   }
 
@@ -94,6 +92,16 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
   /* ============================================================
      INICIO DE LA APP
   ============================================================ */
+
+  Future<void> _startAfterLoadingFrame() async {
+    final binding = WidgetsBinding.instance;
+    // En pruebas de widgets no hay rasterización del motor nativo.
+    if (binding is WidgetsFlutterBinding) {
+      await binding.waitUntilFirstFrameRasterized;
+    }
+    if (!mounted) return;
+    await _authenticateOnStartup();
+  }
 
   Future<void> _authenticateOnStartup() async {
     await _authenticateWithBiometrics(
@@ -304,6 +312,7 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
                 onPressed: () {
                   PushNotificationService.instance.openAction(
                     notification.action,
+                    giftId: notification.giftId,
                   );
                 },
               ),
@@ -323,9 +332,9 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: _checkingSession || _currentUser == null
-            ? AppTheme.darkBackgroundOverlay
-            : AppTheme.lightBackgroundOverlay,
+        value: _checkingSession || _currentUser != null
+            ? AppTheme.lightBackgroundOverlay
+            : AppTheme.darkBackgroundOverlay,
         child: child ?? const SizedBox.shrink(),
       ),
       scaffoldMessengerKey: _messengerKey,
@@ -362,62 +371,55 @@ class _SessionLoadingPage extends StatelessWidget {
   const _SessionLoadingPage();
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.navyDeep,
-              AppColors.navy,
-              Color(
-                0xFF00356C,
-              ),
-            ],
-          ),
-        ),
-        child: const SafeArea(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.all(Radius.circular(24)),
-                child: Image(
-                  image: AssetImage('assets/icon/app_icon.png'),
-                  width: 144,
-                  height: 144,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: AspectRatio(
+                aspectRatio: 500 / 540,
+                child: Image.asset(
+                  'assets/animations/ruta_gen_loader.gif',
                   fit: BoxFit.contain,
+                  semanticLabel: 'Ruta GEN. Cargando…',
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    if (frame == null) return const _LoadingFallback();
+                    return child;
+                  },
+                  errorBuilder: (context, error, stackTrace) =>
+                      const _LoadingFallback(),
                 ),
               ),
-              SizedBox(height: 20),
-              Text(
-                'Ruta GEN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              SizedBox(
-                height: 32,
-              ),
-              CircularProgressIndicator(
-                color: AppColors.cyan,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Cargando...',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _LoadingFallback extends StatelessWidget {
+  const _LoadingFallback();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(
+              color: AppColors.blue,
+              strokeWidth: 3,
+              semanticsLabel: 'Cargando Ruta GEN',
+            ),
+          ),
+          SizedBox(height: 16),
+          Text('Cargando Ruta GEN…', style: TextStyle(color: AppColors.muted)),
+        ],
+      );
 }

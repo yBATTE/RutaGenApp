@@ -1,7 +1,7 @@
 name: ruta_gen_app
-description: Base Flutter de la app de fidelización Ruta Gen.
+description: Base Flutter de la app de fidelizaciÃ³n Ruta Gen.
 publish_to: "none"
-version: 1.0.0+2
+version: 1.0.3+6
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -34,6 +34,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/app_icon.png
+    - assets/animations/ruta_gen_loader.gif
 
 flutter_launcher_icons:
   android: true
