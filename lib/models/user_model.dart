@@ -23,6 +23,8 @@ class UserModel {
     this.qrVersion,
     this.qrCreatedAt,
     this.acceptedTermsAt,
+    this.acceptedTermsVersion,
+    this.acceptedTermsDocumentSha256,
     this.lastLoginAt,
     this.createdAt,
     this.updatedAt,
@@ -58,6 +60,8 @@ class UserModel {
 
   final DateTime? qrCreatedAt;
   final DateTime? acceptedTermsAt;
+  final String? acceptedTermsVersion;
+  final String? acceptedTermsDocumentSha256;
   final DateTime? lastLoginAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -161,6 +165,9 @@ class UserModel {
       ),
       qrCreatedAt: _readDate(json['qrCreatedAt']),
       acceptedTermsAt: _readDate(json['acceptedTermsAt']),
+      acceptedTermsVersion: _readNullableString(json['acceptedTermsVersion']),
+      acceptedTermsDocumentSha256:
+          _readNullableString(json['acceptedTermsDocumentSha256']),
       lastLoginAt: _readDate(json['lastLoginAt']),
       createdAt: _readDate(json['createdAt']),
       updatedAt: _readDate(json['updatedAt']),
@@ -196,6 +203,8 @@ class UserModel {
       'identityVerifiedStationName': identityVerifiedStationName,
       'qrCreatedAt': qrCreatedAt?.toIso8601String(),
       'acceptedTermsAt': acceptedTermsAt?.toIso8601String(),
+      'acceptedTermsVersion': acceptedTermsVersion,
+      'acceptedTermsDocumentSha256': acceptedTermsDocumentSha256,
       'lastLoginAt': lastLoginAt?.toIso8601String(),
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
@@ -230,6 +239,8 @@ class UserModel {
     String? identityVerifiedStationName,
     DateTime? qrCreatedAt,
     DateTime? acceptedTermsAt,
+    String? acceptedTermsVersion,
+    String? acceptedTermsDocumentSha256,
     DateTime? lastLoginAt,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -261,6 +272,9 @@ class UserModel {
           identityVerifiedStationName ?? this.identityVerifiedStationName,
       qrCreatedAt: qrCreatedAt ?? this.qrCreatedAt,
       acceptedTermsAt: acceptedTermsAt ?? this.acceptedTermsAt,
+      acceptedTermsVersion: acceptedTermsVersion ?? this.acceptedTermsVersion,
+      acceptedTermsDocumentSha256:
+          acceptedTermsDocumentSha256 ?? this.acceptedTermsDocumentSha256,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

@@ -8,10 +8,12 @@ class TermsPage extends StatelessWidget {
     super.key,
     required this.acceptedTermsAt,
     this.showAcceptance = true,
+    this.acceptedTermsVersion,
   });
 
   final DateTime? acceptedTermsAt;
   final bool showAcceptance;
+  final String? acceptedTermsVersion;
 
   String _formatDate(DateTime value) {
     final local = value.toLocal();
@@ -19,7 +21,9 @@ class TermsPage extends StatelessWidget {
     final day = local.day.toString().padLeft(2, '0');
     final month = local.month.toString().padLeft(2, '0');
 
-    return '$day/$month/${local.year}';
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$day/$month/${local.year} a las $hour:$minute';
   }
 
   @override
@@ -29,38 +33,34 @@ class TermsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'Términos y condiciones',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          18,
-          20,
-          18,
-          36,
-        ),
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 36),
         children: [
           const _TermsHeader(),
           const SizedBox(height: 14),
-          if (rutaGenTermsIsDraft) const _DraftNotice(),
-          if (showAcceptance) _AcceptanceCard(
-            acceptedTermsAt: acceptedTermsAt,
-            formattedDate: acceptedTermsAt == null
-                ? null
-                : _formatDate(
-                    acceptedTermsAt!,
-                  ),
-          ),
+          if (showAcceptance)
+            _AcceptanceCard(
+              acceptedTermsAt: acceptedTermsAt,
+              acceptedTermsVersion: acceptedTermsVersion,
+              formattedDate: acceptedTermsAt == null
+                  ? null
+                  : _formatDate(acceptedTermsAt!),
+            ),
           const SizedBox(height: 22),
           for (final section in rutaGenTermsSections)
-            _TermSection(number: section.number, title: section.title, content: section.content),
+            _TermSection(
+              number: section.number,
+              title: section.title,
+              content: section.content,
+            ),
           const SizedBox(height: 18),
           const Center(
             child: Text(
               'Ruta GEN · Términos versión $rutaGenTermsVersion\n'
-              'Preparado el $rutaGenTermsUpdatedAt',
+              'Actualizado el $rutaGenTermsUpdatedAt',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.muted,
@@ -75,22 +75,6 @@ class TermsPage extends StatelessWidget {
   }
 }
 
-class _DraftNotice extends StatelessWidget {
-  const _DraftNotice();
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.only(bottom: 14),
-    child: Card(
-      color: Color(0xFFFFF5E6),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Text('BORRADOR PARA REVISIÓN. Datos del organizador completados. Falta validar las bases de cada sorteo, su forma de participación gratuita y los pendientes operativos antes de publicar esta versión.',
-          style: TextStyle(color: Color(0xFF8A5A00), height: 1.4)),
-      ),
-    ),
-  );
-}
-
 class _TermsHeader extends StatelessWidget {
   const _TermsHeader();
 
@@ -102,21 +86,14 @@ class _TermsHeader extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.navyDeep,
-            AppColors.navy,
-          ],
+          colors: [AppColors.navyDeep, AppColors.navy],
         ),
         borderRadius: BorderRadius.circular(18),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.description_outlined,
-            color: AppColors.cyan,
-            size: 34,
-          ),
+          Icon(Icons.description_outlined, color: AppColors.cyan, size: 34),
           SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -133,10 +110,7 @@ class _TermsHeader extends StatelessWidget {
                 SizedBox(height: 6),
                 Text(
                   'Leé las condiciones aplicables al uso de Ruta Gen, la acumulación de puntos y el canje de premios.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(color: Colors.white70, height: 1.4),
                 ),
               ],
             ),
@@ -151,31 +125,45 @@ class _AcceptanceCard extends StatelessWidget {
   const _AcceptanceCard({
     required this.acceptedTermsAt,
     required this.formattedDate,
+    required this.acceptedTermsVersion,
   });
 
   final DateTime? acceptedTermsAt;
   final String? formattedDate;
+  final String? acceptedTermsVersion;
+
+  String get _message {
+    if (acceptedTermsAt == null) {
+      return 'No encontramos registrada la fecha de aceptación.';
+    }
+    if (acceptedTermsVersion == null) {
+      return 'Aceptación registrada: $formattedDate. '
+          'La versión aceptada no quedó registrada. '
+          'Esta fecha no confirma la aceptación de la versión mostrada.';
+    }
+    final record =
+        'Aceptaste los términos versión $acceptedTermsVersion '
+        'el $formattedDate.';
+    if (acceptedTermsVersion == rutaGenTermsVersion) {
+      return record;
+    }
+    return '$record El documento mostrado corresponde a la versión '
+        '$rutaGenTermsVersion; este registro no acredita su aceptación.';
+  }
 
   @override
   Widget build(BuildContext context) {
     final accepted = acceptedTermsAt != null;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: accepted ? const Color(0xFFEAF8F1) : const Color(0xFFFFF5E6),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: accepted
-              ? const Color(0xFF16865A).withValues(
-                  alpha: 0.25,
-                )
-              : const Color(0xFFD98A00).withValues(
-                  alpha: 0.25,
-                ),
+              ? const Color(0xFF16865A).withValues(alpha: 0.25)
+              : const Color(0xFFD98A00).withValues(alpha: 0.25),
         ),
       ),
       child: Row(
@@ -187,9 +175,7 @@ class _AcceptanceCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              accepted
-                  ? 'Registro de aceptación de tu cuenta: $formattedDate. Esta fecha no confirma por sí sola la aceptación de una versión posterior.'
-                  : 'No encontramos registrada la fecha de aceptación.',
+              _message,
               style: TextStyle(
                 color: accepted
                     ? const Color(0xFF126C49)
@@ -218,9 +204,7 @@ class _TermSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 12,
-      ),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(17),
@@ -229,9 +213,7 @@ class _TermSection extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 17,
-                backgroundColor: const Color(
-                  0xFFE8F3FF,
-                ),
+                backgroundColor: const Color(0xFFE8F3FF),
                 foregroundColor: AppColors.blue,
                 child: Text(
                   number,

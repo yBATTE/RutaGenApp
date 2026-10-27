@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import '../../shared/widgets/branded_qr.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
@@ -24,7 +24,8 @@ class MyQrPage extends StatefulWidget {
   State<MyQrPage> createState() => _MyQrPageState();
 }
 
-class _MyQrPageState extends State<MyQrPage> {
+class _MyQrPageState extends State<MyQrPage> with WidgetsBindingObserver {
+  bool _foreground = true;
   late final Future<Customer> _customer = widget.repository.getCustomer();
 
   TemporaryQr? _qr;
@@ -66,6 +67,9 @@ class _MyQrPageState extends State<MyQrPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _foreground = WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     _startTimers();
 
     if (widget.isActive) {
@@ -84,9 +88,15 @@ class _MyQrPageState extends State<MyQrPage> {
     }
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_foreground && widget.isActive) _loadCurrentQr(showLoading: false);
+  }
+
   void _startTimers() {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted || !widget.isActive) return;
+      if (!mounted || !_foreground || !widget.isActive) return;
 
       setState(() {});
     });
@@ -95,6 +105,7 @@ class _MyQrPageState extends State<MyQrPage> {
     // backend informa que fue consumido, desaparece de la pantalla.
     _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted ||
+          !_foreground ||
           !widget.isActive ||
           _qr == null ||
           _remainingSeconds == 0) {
@@ -184,6 +195,7 @@ class _MyQrPageState extends State<MyQrPage> {
       }
 
       if (error.statusCode == 410) {
+        ApiClient.instance.invalidateCustomerData(includeRewards: true);
         final details = error.details;
         final code = details is Map ? details['code']?.toString() : null;
 
@@ -222,6 +234,7 @@ class _MyQrPageState extends State<MyQrPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     _statusTimer?.cancel();
     super.dispose();
@@ -547,16 +560,9 @@ class _MyQrPageState extends State<MyQrPage> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: QrImageView(
+            child: BrandedQr(
               data: qr.qrToken,
               size: 220,
-              eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color: AppColors.navy,
-              ),
-              dataModuleStyle: const QrDataModuleStyle(
-                color: AppColors.navy,
-              ),
             ),
           ),
         ),

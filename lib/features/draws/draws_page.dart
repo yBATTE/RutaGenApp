@@ -1,44 +1,78 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
 import '../../data/ruta_gen_repository.dart';
 import '../../models/user_model.dart';
 import '../../shared/utils/draw_date_format.dart';
-import 'legacy_draws_page.dart';
 
 class DrawsPage extends StatefulWidget {
   const DrawsPage(
       {super.key,
       required this.repository,
       required this.user,
-      required this.isActive});
+      required this.isActive, this.refreshVersion = 0});
   final RutaGenRepository repository;
   final UserModel user;
   final bool isActive;
+  final int refreshVersion;
   @override
   State<DrawsPage> createState() => _DrawsPageState();
 }
 
 class _DrawsPageState extends State<DrawsPage> {
   late Future<List<DrawEvent>> _events;
+  bool _loadingEvents = false;
   @override
   void initState() {
     super.initState();
-    _events = widget.repository.getDrawEvents();
+    _events = _loadEvents();
   }
 
   @override
   void didUpdateWidget(covariant DrawsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!oldWidget.isActive && widget.isActive) _refresh();
+    if ((!oldWidget.isActive && widget.isActive) ||
+        oldWidget.refreshVersion != widget.refreshVersion) {
+      _refresh(forceRefresh: false);
+    }
   }
 
-  Future<void> _refresh() async {
-    final future = widget.repository.getDrawEvents();
-    setState(() => _events = future);
+  Future<List<DrawEvent>> _loadEvents() async {
+    _loadingEvents = true;
+    try {
+      return await widget.repository.getDrawEvents();
+    } finally {
+      _loadingEvents = false;
+    }
+  }
+
+  Future<void> _refresh({bool forceRefresh = true}) async {
+    if (!mounted) return;
+
+    // Reutilizar la consulta inicial o actualización que siga en curso.
+    if (_loadingEvents) {
+      try {
+        await _events;
+      } catch (_) {
+        // FutureBuilder muestra el error y ofrece reintentar.
+      }
+      return;
+    }
+
+    if (forceRefresh) {
+      ApiClient.instance.invalidateCache('/draws');
+    }
+    final future = _loadEvents();
+    setState(() {
+      _events = future;
+    });
     try {
       await future;
-    } catch (_) {/* FutureBuilder informa el error. */}
+    } catch (_) {
+      // FutureBuilder muestra el error y ofrece reintentar.
+    }
   }
 
   Widget card(Widget child) => Container(
@@ -103,15 +137,6 @@ class _DrawsPageState extends State<DrawsPage> {
                       if (past.isEmpty)
                         card(const Text('Aún no hay resultados anteriores.')),
                       ...past.map((item) => _eventCard(context, item)),
-                      TextButton(
-                          onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) => LegacyDrawsPage(
-                                      repository: widget.repository,
-                                      user: widget.user,
-                                      isActive: true))),
-                          child: const Text(
-                              'Ver sorteos periódicos anteriores: bici y moto')),
                     ]);
               },
             )),
@@ -130,11 +155,11 @@ class _DrawsPageState extends State<DrawsPage> {
                 padding: const EdgeInsets.only(right: 14),
                 child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.network(item.imageUrls.first,
+                    child: CachedNetworkImage(imageUrl: item.imageUrls.first,
                         width: 68,
                         height: 68,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        errorWidget: (_, __, ___) =>
                             const Icon(Icons.card_giftcard)))),
           Expanded(
               child: Column(
@@ -176,7 +201,10 @@ class _DrawDetailState extends State<_DrawDetail> {
     _ranking = widget.repository.getDrawEventRanking(widget.event.id);
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool forceRefresh = true}) async {
+    if (forceRefresh) {
+      ApiClient.instance.invalidateCache('/draws');
+    }
     final future = widget.repository.getDrawEventRanking(widget.event.id);
     setState(() => _ranking = future);
     try {
@@ -208,10 +236,10 @@ class _DrawDetailState extends State<_DrawDetail> {
                                     const SizedBox(width: 10),
                                 itemBuilder: (_, index) => ClipRRect(
                                     borderRadius: BorderRadius.circular(15),
-                                    child: Image.network(item.imageUrls[index],
+                                    child: CachedNetworkImage(imageUrl: item.imageUrls[index],
                                         width: 250,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
+                                        errorWidget: (_, __, ___) =>
                                             const Icon(Icons.card_giftcard,
                                                 size: 70))))),
                       const SizedBox(height: 14),

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'data/ruta_gen_repository.dart';
 import 'features/auth/login_page.dart';
@@ -12,6 +11,7 @@ import 'models/user_model.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
 import 'services/push_notification_service.dart';
+import 'shared/widgets/startup_splash.dart';
 
 class RutaGenApp extends StatefulWidget {
   const RutaGenApp({
@@ -34,6 +34,9 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
   UserModel? _currentUser;
 
   bool _checkingSession = true;
+  bool _startupSplashVisible = true;
+  final Completer<void> _splashFinished = Completer<void>();
+  Timer? _splashExitTimer;
   bool _biometricFlowRunning = false;
 
   StreamSubscription<PushMessage>? _pushSubscription;
@@ -61,7 +64,7 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
      * y luego vuelve a abrirla, initState se ejecuta
      * nuevamente y se solicita la biometría.
      */
-    // Esperar a que el motor dibuje el loader antes de abrir Face ID.
+    // Empezar la preparación de sesión después del primer frame de la app.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_startAfterLoadingFrame());
     });
@@ -71,6 +74,8 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pushSubscription?.cancel();
+    _splashExitTimer?.cancel();
+    if (!_splashFinished.isCompleted) _splashFinished.complete();
 
     super.dispose();
   }
@@ -84,7 +89,8 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
     // La sesión sigue abierta y no se vuelve a solicitar biometría.
     if (state == AppLifecycleState.resumed &&
         _currentUser != null &&
-        !_checkingSession) {
+        !_checkingSession &&
+        !_startupSplashVisible) {
       unawaited(_bindPushAfterAuthentication());
     }
   }
@@ -108,10 +114,14 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
       showErrors: false,
     );
 
-    // Con sesión, _bindPushAfterAuthentication ya inicializa Firebase.
-    // Sin sesión, preparar las notificaciones después de mostrar el login.
-    // Ningún permiso de notificaciones bloquea el primer frame ni Face ID.
-    if (mounted && _currentUser == null) {
+    // No mostrar permisos nativos encima del GIF en reproducción.
+    await _splashFinished.future;
+    if (!mounted) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    if (_currentUser != null) {
+      await _bindPushAfterAuthentication();
+    } else {
       await PushNotificationService.instance.initialize();
     }
   }
@@ -136,7 +146,15 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
     }
 
     try {
+      // Leer la configuración en paralelo al splash. La verificación nativa
+      // espera a que termine y a que se pinte la pantalla estática de acceso.
       final enabled = await AuthService.instance.isBiometricEnabled();
+      if (enabled) {
+        await _splashFinished.future;
+        if (!mounted) return;
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted) return;
+      }
 
       final user = enabled
           ? await AuthService.instance.loginWithBiometrics()
@@ -151,11 +169,6 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
         _checkingSession = false;
       });
 
-      if (user != null) {
-        unawaited(
-          _bindPushAfterAuthentication(),
-        );
-      }
     } on BiometricException catch (error) {
       if (!mounted) {
         return;
@@ -332,7 +345,7 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: _checkingSession || _currentUser != null
+        value: _checkingSession || _startupSplashVisible || _currentUser != null
             ? AppTheme.lightBackgroundOverlay
             : AppTheme.darkBackgroundOverlay,
         child: child ?? const SizedBox.shrink(),
@@ -343,15 +356,32 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
   }
 
   Widget _buildHome() {
-    if (_checkingSession) {
-      return const _SessionLoadingPage();
-    }
-
     return AnimatedSwitcher(
       duration: const Duration(
         milliseconds: 280,
       ),
-      child: _currentUser != null
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: _startupSplashVisible
+          ? StartupSplash(
+              key: const ValueKey('startup-splash'),
+              onReady: () {
+                if (!mounted || !_startupSplashVisible) return;
+                setState(() {
+                  _startupSplashVisible = false;
+                });
+                // Esperar el fundido antes de abrir el diálogo del sistema.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  _splashExitTimer = Timer(const Duration(milliseconds: 280), () {
+                    if (!_splashFinished.isCompleted) _splashFinished.complete();
+                  });
+                });
+              },
+            )
+          : _checkingSession
+          ? const _AccessLoadingPage(key: ValueKey('access-loading'))
+          : _currentUser != null
           ? AppShell(
               key: const ValueKey('app'),
               repository: widget.repository,
@@ -367,59 +397,31 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
   }
 }
 
-class _SessionLoadingPage extends StatelessWidget {
-  const _SessionLoadingPage();
+
+/// Estado estático después del GIF, mientras se verifica la identidad/sesión.
+class _AccessLoadingPage extends StatelessWidget {
+  const _AccessLoadingPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
-              child: AspectRatio(
-                aspectRatio: 500 / 540,
-                child: Image.asset(
-                  'assets/animations/ruta_gen_loader.gif',
-                  fit: BoxFit.contain,
-                  semanticLabel: 'Ruta GEN. Cargando…',
-                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                    if (frame == null) return const _LoadingFallback();
-                    return child;
-                  },
-                  errorBuilder: (context, error, stackTrace) =>
-                      const _LoadingFallback(),
+  Widget build(BuildContext context) => const Scaffold(
+        backgroundColor: Color(0xFFFCFCFC),
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 36, color: Color(0xFF01315C)),
+                SizedBox(height: 16),
+                Text('Verificando tu acceso…',
+                    style: TextStyle(color: Color(0xFF01315C), fontSize: 16)),
+                SizedBox(height: 20),
+                SizedBox.square(
+                  dimension: 26,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
                 ),
-              ),
+              ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _LoadingFallback extends StatelessWidget {
-  const _LoadingFallback();
-
-  @override
-  Widget build(BuildContext context) => const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(
-              color: AppColors.blue,
-              strokeWidth: 3,
-              semanticsLabel: 'Cargando Ruta GEN',
-            ),
-          ),
-          SizedBox(height: 16),
-          Text('Cargando Ruta GEN…', style: TextStyle(color: AppColors.muted)),
-        ],
       );
 }

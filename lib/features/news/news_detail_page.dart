@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
@@ -46,6 +48,7 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
   }
 
   Future<void> _retry() async {
+    ApiClient.instance.invalidateCache('/news');
     setState(() {
       _detail = widget.repository.getNewsDetail(widget.initialItem.id);
     });
@@ -120,9 +123,9 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                       color: Colors.white,
                       child: AspectRatio(
                         aspectRatio: 1,
-                        child: Image.network(item!.imageUrl, width: double.infinity,
+                        child: CachedNetworkImage(imageUrl: item!.imageUrl, width: double.infinity,
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Center(child: Icon(
+                          errorWidget: (_, __, ___) => const Center(child: Icon(
                             Icons.image_not_supported_outlined, color: AppColors.blue, size: 58)),
                         ),
                       ),
@@ -192,8 +195,8 @@ class _FullNewsImage extends StatelessWidget {
     appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white,
       title: const Text('Imagen completa')),
     body: Center(child: InteractiveViewer(minScale: 1, maxScale: 5,
-      child: Image.network(imageUrl, fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Text('No se pudo cargar la imagen.',
+      child: CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.contain,
+        errorWidget: (_, __, ___) => const Text('No se pudo cargar la imagen.',
           style: TextStyle(color: Colors.white))),
     )),
   );

@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 
+import 'package:flutter/services.dart';
+
 import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -9,9 +12,9 @@ import '../../data/ruta_gen_repository.dart';
 import '../../models/user_model.dart';
 import '../../shared/widgets/identity_verification_banner.dart';
 import '../../shared/widgets/points_promotion_banner.dart';
-import '../../shared/widgets/ruta_gen_logo.dart';
+import 'widgets/home_hero.dart';
+import 'widgets/home_quick_actions.dart';
 import '../../shared/widgets/visit_progress_card.dart';
-import '../../shared/widgets/section_title.dart';
 import '../movements/movements_page.dart';
 import '../news/news_detail_page.dart';
 import '../news/news_list_page.dart';
@@ -20,6 +23,7 @@ import '../news/news_carousel.dart';
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
+    this.refreshVersion = 0,
     required this.repository,
     required this.user,
     required this.onNavigate,
@@ -32,6 +36,7 @@ class HomePage extends StatefulWidget {
   });
 
   final bool isActive;
+  final int refreshVersion;
   final RutaGenRepository repository;
   final UserModel user;
   final ValueChanged<int> onNavigate;
@@ -45,51 +50,58 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _bellController;
+class _HomePageState extends State<HomePage> {
   late Future<List<Movement>> _movements;
   late Future<List<NewsItem>> _news;
   late Future<VisitProgress> _visitProgress;
   int _promotionRefreshVersion = 0;
 
+  // Sliver children subscribe when they enter the viewport. Attach an error
+  // listener immediately so a fast failure offscreen is still handled; the
+  // original future retains its result/error for its FutureBuilder.
+  Future<T> _observe<T>(Future<T> future) {
+    future.ignore();
+    return future;
+  }
+
   @override
   void initState() {
     super.initState();
-    _bellController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    );
-    if (widget.unreadNotifications > 0) _bellController.repeat();
-
-    _movements = widget.repository.getMovements();
-    _news = widget.repository.getNews(limit: 5);
-    _visitProgress = widget.repository.getVisitProgress();
+    _movements = _observe(widget.repository.getMovements());
+    _news = _observe(widget.repository.getNews(limit: 5));
+    _visitProgress = _observe(widget.repository.getVisitProgress());
   }
 
   @override
   void didUpdateWidget(covariant HomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.unreadNotifications > 0 && !_bellController.isAnimating) {
-      _bellController.repeat();
-    } else if (widget.unreadNotifications == 0 && _bellController.isAnimating) {
-      _bellController.stop();
-      _bellController.reset();
+    if (oldWidget.refreshVersion != widget.refreshVersion ||
+        (!oldWidget.isActive && widget.isActive) ||
+        oldWidget.user.pointsBalance != widget.user.pointsBalance ||
+        oldWidget.user.identityVerified != widget.user.identityVerified) {
+      _movements = _observe(widget.repository.getMovements());
+      _news = _observe(widget.repository.getNews(limit: 5));
+      _visitProgress = _observe(widget.repository.getVisitProgress());
     }
   }
 
-  @override
-  void dispose() {
-    _bellController.dispose();
-    super.dispose();
-  }
-
   Future<void> _refresh() async {
-    final movements = widget.repository.getMovements();
+    for (final path in [
+      '/auth/me',
+      '/loads/me',
+      '/rewards',
+      '/users/me/point-adjustments',
+      '/news',
+      '/points/promotion',
+      '/draws',
+    ]) {
+      ApiClient.instance.invalidateCache(path);
+    }
+    final movements = _observe(widget.repository.getMovements());
 
-    final news = widget.repository.getNews(limit: 5);
+    final news = _observe(widget.repository.getNews(limit: 5));
 
-    final visitProgress = widget.repository.getVisitProgress();
+    final visitProgress = _observe(widget.repository.getVisitProgress());
 
     setState(() {
       _promotionRefreshVersion++;
@@ -98,12 +110,16 @@ class _HomePageState extends State<HomePage>
       _visitProgress = visitProgress;
     });
 
-    await Future.wait<Object?>([
-      movements,
-      news,
-      visitProgress,
-      widget.onRefreshUser(),
-    ]);
+    try {
+      await Future.wait<Object?>([
+        movements,
+        news,
+        visitProgress,
+        widget.onRefreshUser(),
+      ]);
+    } catch (_) {
+      // Each section keeps its retry/error UI; finish the refresh gesture.
+    }
   }
 
   String _formatPoints(double value) {
@@ -148,500 +164,221 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding =
+        math.max(18.0, (MediaQuery.sizeOf(context).width - 720) / 2);
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        color: AppColors.blue,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverAppBar(
-              systemOverlayStyle: AppTheme.darkBackgroundOverlay,
-              pinned: true,
-              expandedHeight: 142 +
-                  (MediaQuery.textScalerOf(context).scale(26) - 26) +
-                  (MediaQuery.textScalerOf(context).scale(14) - 14),
-              backgroundColor: AppColors.navy,
-              foregroundColor: Colors.white,
-              title: const RutaGenLogo(
-                compact: true,
-              ),
-              actions: [
-                IconButton(
-                  onPressed: widget.onOpenNotifications,
-                  tooltip: widget.unreadNotifications > 0
-                      ? '${widget.unreadNotifications} notificaciones sin leer'
-                      : 'Notificaciones',
-                  icon: SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: Stack(
-                      clipBehavior: Clip.none,
+      backgroundColor: const Color(0xFF032A46),
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AppTheme.darkBackgroundOverlay,
+        child: SafeArea(
+          bottom: false,
+          child: ColoredBox(
+            color: AppColors.ice,
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              color: AppColors.blue,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: HomeHero(
+                      firstName: widget.user.firstName,
+                      formattedPoints: _formatPoints(widget.user.pointsBalance),
+                      unreadNotifications: widget.unreadNotifications,
+                      onOpenNotifications: widget.onOpenNotifications,
+                      onRewardsTap: () => widget.onNavigate(3),
+                      horizontalPadding: horizontalPadding,
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      6,
+                      horizontalPadding,
+                      28,
+                    ),
+                    sliver: SliverList.list(
                       children: [
-                        Center(
-                          child: AnimatedBuilder(
-                            animation: _bellController,
-                            builder: (_, child) {
-                              final t = _bellController.value;
-                              final angle = t < .55
-                                  ? .18 *
-                                      math.sin(t * math.pi * 9) *
-                                      (1 - t / .55)
-                                  : 0.0;
-                              return Transform.rotate(
-                                angle: angle,
-                                alignment: Alignment.topCenter,
-                                child: child,
+                        if (widget.user.dni.trim().isEmpty ||
+                            !widget.user.identityVerified) ...[
+                          IdentityVerificationBanner(
+                            needsDni: widget.user.dni.trim().isEmpty,
+                            onCompleteDni: widget.onCompleteDni,
+                            onViewStations: () => widget.onNavigate(1),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        HomeSectionTitle(
+                          'Novedades',
+                          action: 'Ver todas ›',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  NewsListPage(repository: widget.repository),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        FutureBuilder<List<NewsItem>>(
+                          future: _news,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const SizedBox(
+                                height: 148,
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return _MessageCard(
+                                icon: Icons.cloud_off_rounded,
+                                title: 'No pudimos cargar las novedades',
+                                message: 'Deslizá hacia abajo para reintentar.',
+                                onTap: _refresh,
+                              );
+                            }
+
+                            final items = snapshot.data ?? [];
+
+                            if (items.isEmpty) {
+                              return const _MessageCard(
+                                icon: Icons.campaign_outlined,
+                                title: 'No hay novedades publicadas',
+                                message:
+                                    'Cuando tengamos algo nuevo, aparecerá acá.',
+                              );
+                            }
+
+                            return NewsCarousel(
+                              items: items,
+                              onOpen: _openNewsDetail,
+                            );
+                          },
+                        ),
+                        PointsPromotionBanner(
+                          repository: widget.repository,
+                          isActive: widget.isActive,
+                          refreshVersion: _promotionRefreshVersion,
+                        ),
+                        const SizedBox(height: 18),
+                        HomeQuickActions(
+                          onQr: () => widget.onNavigate(2),
+                          onRewards: () => widget.onNavigate(3),
+                          onMovements: _openMovements,
+                        ),
+                        const SizedBox(height: 22),
+                        if (widget.user.identityVerified)
+                          FutureBuilder<VisitProgress>(
+                            future: _visitProgress,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                      ConnectionState.waiting &&
+                                  !snapshot.hasData) {
+                                return const Padding(
+                                  padding: EdgeInsets.only(bottom: 24),
+                                  child: Center(
+                                      child: CircularProgressIndicator()),
+                                );
+                              }
+                              if (snapshot.hasError) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 24),
+                                  child: _MessageCard(
+                                    icon: Icons.cloud_off_rounded,
+                                    title: 'No pudimos cargar tu ruta del mes',
+                                    message:
+                                        'Deslizá hacia abajo para reintentar.',
+                                    onTap: _refresh,
+                                  ),
+                                );
+                              }
+                              final progress = snapshot.data;
+                              if (progress == null || !progress.enabled) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 24),
+                                child: VisitProgressCard(
+                                  progress: progress,
+                                  onOpenGifts: widget.onOpenGiftRewards,
+                                  onHistory: _openMovements,
+                                ),
                               );
                             },
-                            child: const Icon(Icons.notifications_outlined),
                           ),
+                        _GiftShortcut(
+                          onTap: widget.onOpenGiftRewards,
                         ),
-                        if (widget.unreadNotifications > 0)
-                          Positioned(
-                            top: -3,
-                            right: -6,
-                            child: Container(
-                              constraints: const BoxConstraints(minWidth: 18),
-                              height: 18,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 4),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE73454),
-                                borderRadius: BorderRadius.circular(9),
-                                border: Border.all(
-                                    color: AppColors.navy, width: 1.5),
-                              ),
-                              child: Text(
-                                widget.unreadNotifications > 99
-                                    ? '99+'
-                                    : '${widget.unreadNotifications}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              flexibleSpace: FlexibleSpaceBar(
-                background: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.navyDeep,
-                        Color(0xFF074482),
-                      ],
-                    ),
-                  ),
-                  child: SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 62, 18, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hola, ${widget.user.firstName}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Este es el resumen de tu cuenta',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Stack(
-                children: [
-                  const Positioned.fill(
-                    child: FractionallySizedBox(
-                      heightFactor: .45,
-                      alignment: Alignment.topCenter,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [AppColors.navyDeep, Color(0xFF074482)],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: _PointsCard(
-                      user: widget.user,
-                      formattedPoints: _formatPoints(widget.user.pointsBalance),
-                      onRewardsTap: () => widget.onNavigate(3),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                18,
-                12,
-                18,
-                32,
-              ),
-              sliver: SliverList.list(
-                children: [
-                  if (widget.user.dni.trim().isEmpty || !widget.user.identityVerified) ...[
-                    IdentityVerificationBanner(
-                      needsDni: widget.user.dni.trim().isEmpty,
-                      onCompleteDni: widget.onCompleteDni,
-                      onViewStations: () => widget.onNavigate(1),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  SectionTitle(
-                    'Novedades',
-                    action: 'Ver todas ›',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => NewsListPage(repository: widget.repository),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  FutureBuilder<List<NewsItem>>(
-                    future: _news,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SizedBox(
-                          height: 148,
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return _MessageCard(
-                          icon: Icons.cloud_off_rounded,
-                          title: 'No pudimos cargar las novedades',
-                          message: 'Deslizá hacia abajo para reintentar.',
-                          onTap: _refresh,
-                        );
-                      }
-
-                      final items = snapshot.data ?? [];
-
-                      if (items.isEmpty) {
-                        return const _MessageCard(
-                          icon: Icons.campaign_outlined,
-                          title: 'No hay novedades publicadas',
-                          message: 'Cuando tengamos algo nuevo, aparecerá acá.',
-                        );
-                      }
-
-                      return NewsCarousel(
-                        items: items,
-                        onOpen: _openNewsDetail,
-                      );
-                    },
-                  ),
-                  PointsPromotionBanner(
-                    repository: widget.repository,
-                    isActive: widget.isActive,
-                    refreshVersion: _promotionRefreshVersion,
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.qr_code_2_rounded,
-                          label: 'Mi QR',
-                          onTap: () => widget.onNavigate(
-                            2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.card_giftcard_rounded,
-                          label: 'Premios',
-                          onTap: () => widget.onNavigate(
-                            3,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.history_rounded,
-                          label: 'Movimientos',
+                        const SizedBox(height: 26),
+                        HomeSectionTitle(
+                          'Últimos movimientos',
+                          action: 'Ver todas',
                           onTap: _openMovements,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  if (widget.user.identityVerified)
-                    FutureBuilder<VisitProgress>(
-                      future: _visitProgress,
-                      builder: (context, snapshot) {
-                        final progress = snapshot.data;
-                        if (progress == null || !progress.enabled) {
-                          return const SizedBox.shrink();
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          child: VisitProgressCard(
-                            progress: progress,
-                            onOpenGifts: widget.onOpenGiftRewards,
-                          ),
-                        );
-                      },
-                    ),
-                  _GiftShortcut(
-                    onTap: widget.onOpenGiftRewards,
-                  ),
-                  const SizedBox(height: 26),
-                  SectionTitle(
-                    'Últimos movimientos',
-                    action: 'Ver todas',
-                    onTap: _openMovements,
-                  ),
-                  const SizedBox(height: 10),
-                  FutureBuilder<List<Movement>>(
-                    future: _movements,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SizedBox(
-                          height: 130,
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
+                        const SizedBox(height: 10),
+                        FutureBuilder<List<Movement>>(
+                          future: _movements,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const SizedBox(
+                                height: 130,
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
 
-                      if (snapshot.hasError) {
-                        return _MessageCard(
-                          icon: Icons.cloud_off_rounded,
-                          title: 'No pudimos cargar tus movimientos',
-                          message:
-                              'Deslizá hacia abajo para volver a intentar.',
-                          onTap: _refresh,
-                        );
-                      }
+                            if (snapshot.hasError) {
+                              return _MessageCard(
+                                icon: Icons.cloud_off_rounded,
+                                title: 'No pudimos cargar tus movimientos',
+                                message:
+                                    'Deslizá hacia abajo para volver a intentar.',
+                                onTap: _refresh,
+                              );
+                            }
 
-                      final movements = snapshot.data ?? [];
+                            final movements = snapshot.data ?? [];
 
-                      if (movements.isEmpty) {
-                        return const _MessageCard(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'Todavía no tenés movimientos',
-                          message: 'Tus cargas y canjes aparecerán acá.',
-                        );
-                      }
+                            if (movements.isEmpty) {
+                              return const _MessageCard(
+                                icon: Icons.receipt_long_outlined,
+                                title: 'Todavía no tenés movimientos',
+                                message: 'Tus cargas y canjes aparecerán acá.',
+                              );
+                            }
 
-                      final recentMovements = movements.take(3).toList();
+                            final recentMovements = movements.take(3).toList();
 
-                      return Column(
-                        children: List.generate(
-                          recentMovements.length,
-                          (index) => Padding(
-                            padding: EdgeInsets.only(
-                              bottom:
-                                  index == recentMovements.length - 1 ? 0 : 10,
-                            ),
-                            child: _LatestMovementCard(
-                              movement: recentMovements[index],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PointsCard extends StatelessWidget {
-  const _PointsCard({
-    required this.user,
-    required this.formattedPoints,
-    required this.onRewardsTap,
-  });
-
-  final UserModel user;
-  final String formattedPoints;
-  final VoidCallback onRewardsTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final memberCode = user.memberCode?.trim();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.navyDeep,
-            Color(0xFF084B90),
-            Color(0xFF0878C9),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.20),
-            blurRadius: 22,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            top: -25,
-            child: Container(
-              width: 115,
-              height: 115,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 30,
-            bottom: -50,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.cyan.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'PUNTOS DISPONIBLES',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.7,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            '$formattedPoints pts',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 34,
-                              fontWeight: FontWeight.w900,
-                              height: 1.05,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          memberCode != null && memberCode.isNotEmpty
-                              ? 'Socio $memberCode'
-                              : 'Usá tus puntos para canjear premios',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            return Column(
+                              children: List.generate(
+                                recentMovements.length,
+                                (index) => Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: index == recentMovements.length - 1
+                                        ? 0
+                                        : 10,
+                                  ),
+                                  child: _LatestMovementCard(
+                                    movement: recentMovements[index],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  CircleAvatar(
-                    radius: 27,
-                    backgroundColor: const Color(0xFF0A66C7),
-                    child: Text(
-                      user.initials.isEmpty ? 'RG' : user.initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: onRewardsTap,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.navy,
-                  minimumSize: const Size.fromHeight(40),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.card_giftcard_rounded, size: 18),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Ver premios',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, size: 20),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -775,13 +512,15 @@ class _LatestMovementCard extends StatelessWidget {
                         ? AppColors.blue
                         : AppColors.danger,
                 child: Icon(
-                  movement.isGiftRedeemed ? Icons.check_circle_rounded : movement.type == MovementType.adjustment
-                      ? Icons.tune_rounded
-                      : movement.type == MovementType.load
-                          ? Icons.local_gas_station_rounded
-                          : movement.type == MovementType.visitBonus
-                              ? Icons.route_rounded
-                              : Icons.card_giftcard_rounded,
+                  movement.isGiftRedeemed
+                      ? Icons.check_circle_rounded
+                      : movement.type == MovementType.adjustment
+                          ? Icons.tune_rounded
+                          : movement.type == MovementType.load
+                              ? Icons.local_gas_station_rounded
+                              : movement.type == MovementType.visitBonus
+                                  ? Icons.route_rounded
+                                  : Icons.card_giftcard_rounded,
                 ),
               ),
               const SizedBox(width: 14),
@@ -823,65 +562,6 @@ class _LatestMovementCard extends StatelessWidget {
                           : AppColors.danger,
                   fontSize: isGift ? 14 : 21,
                   fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 18,
-            horizontal: 4,
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(
-                    0xFFE8F3FF,
-                  ),
-                  borderRadius: BorderRadius.circular(
-                    14,
-                  ),
-                ),
-                child: Icon(
-                  icon,
-                  color: AppColors.blue,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(height: 9),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
                 ),
               ),
             ],

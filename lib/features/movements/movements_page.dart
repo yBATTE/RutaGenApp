@@ -32,10 +32,15 @@ class _MovementsPageState extends State<MovementsPage> {
   @override
   void initState() {
     super.initState();
-    _loadFirstPage();
+    _loadFirstPage(forceRefresh: false);
   }
 
-  Future<void> _loadFirstPage() async {
+  Future<void> _loadFirstPage({bool forceRefresh = true}) async {
+    if (forceRefresh) {
+      for (final path in ['/loads/me', '/rewards/me', '/users/me/point-adjustments']) {
+        ApiClient.instance.invalidateCache(path);
+      }
+    }
     setState(() {
       _loading = true;
       _loadingMore = false;

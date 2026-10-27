@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -86,18 +87,18 @@ class _RewardDetailPageState extends State<RewardDetailPage> {
                           child: InteractiveViewer(
                             minScale: 1,
                             maxScale: 4,
-                            child: Image.network(gallery[index],
+                            child: CachedNetworkImage(imageUrl: gallery[index],
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
+                                errorWidget: (_, __, ___) =>
                                     const Icon(Icons.broken_image_outlined)),
                           ),
                         ),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(10),
-                        child: Image.network(gallery[index],
+                        child: CachedNetworkImage(imageUrl: gallery[index],
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Icon(reward.icon,
+                            errorWidget: (_, __, ___) => Icon(reward.icon,
                                 size: 130, color: AppColors.navy)),
                       ),
                     ),

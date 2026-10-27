@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:ruta_gen_app/services/api_client.dart';
 import 'package:ruta_gen_app/services/auth_service.dart';
+import 'package:ruta_gen_app/features/account/terms_content.dart';
 
 const customer = <String, dynamic>{
   'id': 'test-customer',
@@ -40,6 +41,9 @@ void main() {
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         if (request.url.path.endsWith('/register')) {
           expect(body.containsKey('dni'), false);
+          expect(body['acceptedTerms'], true);
+          expect(body['acceptedTermsVersion'], rutaGenTermsVersion);
+          expect(body['acceptedTermsDocumentSha256'], rutaGenTermsDocumentSha256);
           expect(body['email'], 'prueba@example.com');
           return payload({'user': userWithoutDni}, 201);
         }

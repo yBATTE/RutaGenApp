@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import '../../services/api_client.dart';
+import '../../shared/widgets/branded_qr.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
@@ -59,6 +60,7 @@ class _GiftRewardsPageState extends State<GiftRewardsPage> {
   }
 
   Future<void> _refresh() async {
+    ApiClient.instance.invalidateCache('/rewards/gifts/me');
     final next = widget.repository.getGiftRewards();
     setState(() {
       _future = next;
@@ -482,18 +484,10 @@ class _GiftDetailSheet extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: QrImageView(
+                  child: BrandedQr(
                     data: gift.qrToken!,
                     size: 220,
-                    backgroundColor: Colors.white,
-                    eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.square,
-                      color: AppColors.navy,
-                    ),
-                    dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
-                      color: AppColors.navyDeep,
-                    ),
+                    moduleColor: AppColors.navyDeep,
                   ),
                 ),
                 const SizedBox(height: 14),

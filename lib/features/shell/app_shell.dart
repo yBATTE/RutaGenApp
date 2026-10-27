@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import 'widgets/gen_bottom_navigation.dart';
 import '../../data/ruta_gen_repository.dart';
 import '../../models/user_model.dart';
 import '../../services/api_client.dart';
@@ -39,6 +39,8 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
+  int _dataVersion = 0;
+  final Set<int> _visitedTabs = {0};
   int _unreadNotifications = 0;
   bool _loadingNotifications = false;
   bool _notificationsRefreshPending = false;
@@ -47,6 +49,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   late UserModel _currentUser;
   bool _refreshingUser = false;
+  bool _userRefreshPending = false;
+  bool _foreground = true;
 
   @override
   void initState() {
@@ -59,7 +63,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       (_) => _refreshNotifications(),
     );
     _pushSubscription =
-        PushNotificationService.instance.foregroundMessages.listen((_) {
+        PushNotificationService.instance.foregroundMessages.listen((message) {
+      ApiClient.instance.invalidateForNotification(message.action);
+      if (mounted) setState(() => _dataVersion++);
+      _refreshCurrentUser();
       Future.delayed(const Duration(seconds: 2), _refreshNotifications);
     });
 
@@ -83,7 +90,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_foreground) {
+      // Conservar entradas válidas; los TTL renuevan lo que haya vencido.
+      if (mounted) setState(() => _dataVersion++);
       _refreshNotifications();
       _refreshCurrentUser();
     }
@@ -94,7 +104,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   Future<void> _refreshNotifications() async {
-    if (AuthService.instance.accountDeletionInProgress) return;
+    if (!mounted ||
+        !_foreground ||
+        AuthService.instance.accountDeletionInProgress) {
+      return;
+    }
     if (_loadingNotifications) {
       _notificationsRefreshPending = true;
       return;
@@ -157,6 +171,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   Future<void> _refreshCurrentUser() async {
     if (AuthService.instance.accountDeletionInProgress) return;
     if (_refreshingUser) {
+      _userRefreshPending = true;
       return;
     }
 
@@ -179,6 +194,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
       if (AuthService.instance.accountDeletionInProgress) return;
       if (error.isUnauthorized || error.isForbidden) {
+        _userRefreshPending = false;
         _handleSessionExpired();
         return;
       }
@@ -208,6 +224,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         );
     } finally {
       _refreshingUser = false;
+      if (_userRefreshPending && mounted &&
+          !AuthService.instance.accountDeletionInProgress) {
+        _userRefreshPending = false;
+        unawaited(_refreshCurrentUser());
+      }
     }
   }
 
@@ -239,6 +260,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (_index != index) {
       setState(() {
         _index = index;
+        _visitedTabs.add(index);
       });
     }
 
@@ -292,6 +314,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
     final action = PushNotificationService.instance.consumePendingAction();
     if (action == null) return;
+    ApiClient.instance.invalidateForNotification(action.action);
+    setState(() => _dataVersion++);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -328,6 +352,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       HomePage(
+        refreshVersion: _dataVersion,
         isActive: _index == 0,
         repository: widget.repository,
         user: _currentUser,
@@ -347,6 +372,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onSessionExpired: _handleSessionExpired,
       ),
       RewardsPage(
+        refreshVersion: _dataVersion,
         repository: widget.repository,
         isActive: _index == 3,
         onRefreshUser: _refreshCurrentUser,
@@ -366,6 +392,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     pages.insert(
         4,
         DrawsPage(
+          refreshVersion: _dataVersion,
           repository: widget.repository,
           user: _currentUser,
           isActive: _index == 4,
@@ -374,65 +401,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: pages,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _goTo,
-        height: 72,
-        backgroundColor: Colors.white,
-        indicatorColor: AppColors.blue.withValues(
-          alpha: 0.12,
-        ),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Inicio',
-          ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.local_gas_station_outlined,
-            ),
-            selectedIcon: Icon(
-              Icons.local_gas_station_rounded,
-            ),
-            label: 'Estaciones',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_2_rounded),
-            selectedIcon: Icon(Icons.qr_code_2_rounded),
-            label: 'Mi QR',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.card_giftcard_outlined),
-            selectedIcon: Icon(
-              Icons.card_giftcard_rounded,
-            ),
-            label: 'Premios',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.emoji_events_outlined),
-            selectedIcon: Icon(Icons.emoji_events_rounded),
-            label: 'Sorteos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Cuenta',
-          ),
+        children: [
+          for (var i = 0; i < pages.length; i++)
+            _visitedTabs.contains(i) ? pages[i] : const SizedBox.shrink(),
         ],
       ),
-      floatingActionButton: _index == 0
-          ? FloatingActionButton.small(
-              onPressed: _openMovements,
-              backgroundColor: AppColors.navy,
-              foregroundColor: Colors.white,
-              child: const Icon(
-                Icons.history_rounded,
-              ),
-            )
-          : null,
+      bottomNavigationBar: GenBottomNavigation(
+        selectedIndex: _index,
+        onDestinationSelected: _goTo,
+      ),
     );
   }
 }

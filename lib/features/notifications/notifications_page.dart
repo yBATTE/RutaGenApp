@@ -102,6 +102,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _refresh() async {
+    _apiClient.invalidateCache('/notifications/me');
     final next = _load();
     setState(() {
       _future = next;

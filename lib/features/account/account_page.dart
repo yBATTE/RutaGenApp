@@ -64,6 +64,7 @@ class AccountPage extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => TermsPage(
           acceptedTermsAt: user.acceptedTermsAt,
+          acceptedTermsVersion: user.acceptedTermsVersion,
         ),
       ),
     );

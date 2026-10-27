@@ -8,3 +8,5 @@ coverage/
 android/.gradle/
 ios/Pods/
 *.iml
+
+*.md

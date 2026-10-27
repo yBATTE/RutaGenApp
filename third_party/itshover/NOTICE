@@ -1,0 +1,6 @@
+Its Hover map-pin-icon
+Source: https://www.itshover.com/icons/map-pin-icon
+Repository: https://github.com/itshover/itshover
+Original React/SVG icon distributed under Apache License 2.0.
+Adapted for Ruta GEN: native Flutter CustomPainter, static rendering, brand color.
+The original path geometry and circle are preserved.

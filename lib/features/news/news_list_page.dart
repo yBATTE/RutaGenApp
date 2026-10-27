@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
 
 import '../../data/models.dart';
 import '../../data/ruta_gen_repository.dart';
@@ -31,6 +32,7 @@ class _NewsListPageState extends State<NewsListPage> {
   }
 
   Future<void> _load({bool refresh = false}) async {
+    if (refresh) ApiClient.instance.invalidateCache('/news');
     if (_loading && !refresh) return;
     final request = ++_request;
     final page = refresh ? 1 : _nextPage;

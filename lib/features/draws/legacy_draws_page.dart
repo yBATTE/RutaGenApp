@@ -1,5 +1,6 @@
 import '../../shared/utils/draw_date_format.dart';
 import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models.dart';
@@ -34,10 +35,13 @@ class _LegacyDrawsPageState extends State<LegacyDrawsPage> {
   @override
   void didUpdateWidget(covariant LegacyDrawsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!oldWidget.isActive && widget.isActive) _refresh();
+    if (!oldWidget.isActive && widget.isActive) _refresh(forceRefresh: false);
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool forceRefresh = true}) async {
+    if (forceRefresh) {
+      ApiClient.instance.invalidateCache('/draws');
+    }
     final future = widget.repository.getMonthlyRanking(type: _selectedType);
     setState(() => _ranking = future);
     try {
@@ -279,6 +283,7 @@ class _LegacyDrawsPageState extends State<LegacyDrawsPage> {
                                       Navigator.of(context).push(
                                           MaterialPageRoute(
                                               builder: (_) => TermsPage(
+                                                  acceptedTermsVersion: widget.user.acceptedTermsVersion,
                                                   acceptedTermsAt: widget
                                                       .user.acceptedTermsAt)));
                                     },

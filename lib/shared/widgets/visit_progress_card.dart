@@ -8,10 +8,12 @@ class VisitProgressCard extends StatelessWidget {
     super.key,
     required this.progress,
     required this.onOpenGifts,
+    this.onHistory,
   });
 
   final VisitProgress progress;
   final VoidCallback onOpenGifts;
+  final VoidCallback? onHistory;
 
   static const _stations = <({String slug, String label})>[
     (slug: 'combustibles-canning-1', label: 'Combustibles Canning'),
@@ -59,12 +61,11 @@ class VisitProgressCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE6EBF1)),
+        borderRadius: BorderRadius.circular(26),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 14,
+            color: Color(0x12063D73),
+            blurRadius: 20,
             offset: Offset(0, 6),
           ),
         ],
@@ -75,15 +76,16 @@ class VisitProgressCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF4FF),
-                  borderRadius: BorderRadius.circular(13),
+                  color: const Color(0xFFE5F0FF),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(
                   Icons.route_rounded,
                   color: AppColors.blue,
+                  size: 30,
                 ),
               ),
               const SizedBox(width: 12),
@@ -111,7 +113,53 @@ class VisitProgressCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onHistory != null) ...[
+                const SizedBox(width: 6),
+                IconButton.filled(
+                  onPressed: onHistory,
+                  tooltip: 'Ver historial de movimientos',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.navy,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(48, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.history_rounded),
+                ),
+              ],
             ],
+          ),
+          const SizedBox(height: 15),
+          Semantics(
+            label: 'Progreso de estaciones visitadas',
+            value: '${progress.stationCount} de 3',
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 10,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Stack(
+                    children: [
+                      const Positioned.fill(
+                        child: ColoredBox(color: Color(0xFFE3EEFF)),
+                      ),
+                      Container(
+                        width: constraints.maxWidth *
+                            (progress.stationCount / 3).clamp(0.0, 1.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF08B5F9), AppColors.blue],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 15),
           ..._stations.map((station) {
@@ -129,11 +177,18 @@ class VisitProgressCard extends StatelessWidget {
                     size: 20,
                   ),
                   const SizedBox(width: 9),
-                  Text(
-                    station.label,
-                    style: TextStyle(
-                      color: visited ? AppColors.ink : AppColors.muted,
-                      fontWeight: visited ? FontWeight.w800 : FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      // Prefer the server's current station name.
+                      visited
+                          ? progress.visitedStations
+                              .firstWhere((item) => item.slug == station.slug)
+                              .name
+                          : station.label,
+                      style: TextStyle(
+                        color: visited ? AppColors.ink : AppColors.muted,
+                        fontWeight: visited ? FontWeight.w800 : FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],

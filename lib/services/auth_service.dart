@@ -1,4 +1,5 @@
 import '../models/user_model.dart';
+import '../features/account/terms_content.dart';
 import 'api_client.dart';
 import 'biometric_service.dart';
 
@@ -56,6 +57,8 @@ class AuthService {
         'email': cleanEmail,
         'password': password,
         'acceptedTerms': acceptedTerms,
+        'acceptedTermsVersion': rutaGenTermsVersion,
+        'acceptedTermsDocumentSha256': rutaGenTermsDocumentSha256,
       },
     );
 

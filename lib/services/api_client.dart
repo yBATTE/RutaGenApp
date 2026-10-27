@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
+import 'api_cache_policy.dart';
 
 /* ============================================================
    EXCEPCIONES API
@@ -41,7 +42,7 @@ class _CacheEntry {
     required this.expiresAt,
   });
 
-  final Map<String, dynamic> data;
+  final String data;
   final DateTime expiresAt;
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
@@ -66,6 +67,10 @@ class ApiClient {
 
   bool _sessionInvalidated = false;
   int _cacheGeneration = 0;
+  final Map<String, Object> _cacheVersions = {};
+  int _sessionGeneration = 0;
+  static const int _maxCacheEntries = 128;
+  static const int _maxCacheItemBytes = 128 * 1024;
 
   static const String _accessTokenKey = 'access_token';
   static const String _legacyQrTokenKey = 'qr_token';
@@ -93,6 +98,7 @@ class ApiClient {
    * No se persiste entre reinicios.
    */
   final Map<String, _CacheEntry> _getCache = {};
+  final Map<String, DateTime> _serverRefreshPaths = {};
 
   /*
    * Requests GET actualmente en ejecución.
@@ -112,18 +118,26 @@ class ApiClient {
   /* ============================================================
      GET NORMAL
 
-     No guarda cache por TTL.
-
-     Pero SÍ deduplica llamadas simultáneas.
+     Aplica el TTL permitido por ApiCachePolicy y deduplica consultas.
+     Las rutas no incluidas consultan siempre al servidor.
   ============================================================ */
 
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, String>? queryParameters,
     bool requiresAuthentication = true,
+    bool forceRefresh = false,
   }) {
-    return _getDeduplicated(
-      path,
+    final duration = ApiCachePolicy.durationFor(path);
+    if (duration > Duration.zero) {
+      return getCached(path,
+        queryParameters: queryParameters,
+        requiresAuthentication: requiresAuthentication,
+        cacheDuration: duration,
+        forceRefresh: forceRefresh,
+      );
+    }
+    return _getDeduplicated(path,
       queryParameters: queryParameters,
       requiresAuthentication: requiresAuthentication,
     );
@@ -161,6 +175,7 @@ class ApiClient {
      * Si no estamos forzando actualización,
      * buscamos primero en memoria.
      */
+    if (forceRefresh) invalidateCache(Uri.parse(path).path);
     if (!forceRefresh) {
       final cached = _getCache[cacheKey];
 
@@ -174,9 +189,7 @@ class ApiClient {
            * Devolvemos una copia para evitar que código externo
            * modifique accidentalmente el objeto guardado.
            */
-          return Map<String, dynamic>.from(
-            cached.data,
-          );
+          return jsonDecode(cached.data) as Map<String, dynamic>;
         }
 
         /*
@@ -197,28 +210,40 @@ class ApiClient {
     );
 
     /*
-     * Usamos get(), que además deduplica requests simultáneos.
+     * La consulta de red deduplica requests simultáneos sin reingresar al TTL.
      */
     final generation = _cacheGeneration;
-    final result = await get(
-      path,
-      queryParameters: queryParameters,
-      requiresAuthentication: requiresAuthentication,
-    );
-
-    /*
-     * Sólo cacheamos respuestas exitosas.
-     */
-    if (cacheDuration > Duration.zero && generation == _cacheGeneration) {
-      _getCache[cacheKey] = _CacheEntry(
-        data: Map<String, dynamic>.from(result),
-        expiresAt: DateTime.now().add(
-          cacheDuration,
-        ),
+    final version = _cacheVersions.putIfAbsent(cacheKey, Object.new);
+    try {
+      final result = await _getDeduplicated(
+        path,
+        queryParameters: queryParameters,
+        requiresAuthentication: requiresAuthentication,
       );
-    }
 
-    return Map<String, dynamic>.from(result);
+      // Una invalidación solo impide guardar respuestas del recurso afectado.
+      if (cacheDuration > Duration.zero && result['success'] != false &&
+          generation == _cacheGeneration &&
+          identical(_cacheVersions[cacheKey], version)) {
+        final encoded = jsonEncode(result);
+        _getCache.removeWhere((key, entry) => entry.isExpired);
+        if (utf8.encode(encoded).length <= _maxCacheItemBytes) {
+          _getCache.remove(cacheKey);
+          while (_getCache.length >= _maxCacheEntries) {
+            _getCache.remove(_getCache.keys.first);
+          }
+          _getCache[cacheKey] = _CacheEntry(
+            data: encoded,
+            expiresAt: DateTime.now().add(cacheDuration),
+          );
+        }
+      }
+      return jsonDecode(jsonEncode(result)) as Map<String, dynamic>;
+    } finally {
+      // Acotar también los marcadores de versión a caché/consultas vivas.
+      _cacheVersions.removeWhere((key, _) =>
+          !_getCache.containsKey(key) && !_pendingGetRequests.containsKey(key));
+    }
   }
 
   /* ============================================================
@@ -329,7 +354,8 @@ class ApiClient {
         '${uri.path}${_queryLog(uri)}',
       );
 
-      return existing;
+      return existing.then((data) =>
+          jsonDecode(jsonEncode(data)) as Map<String, dynamic>);
     }
 
     /*
@@ -361,7 +387,8 @@ class ApiClient {
       onError: (Object error, StackTrace stackTrace) => clearPending(),
     );
 
-    return future;
+    return future.then((data) =>
+        jsonDecode(jsonEncode(data)) as Map<String, dynamic>);
   }
 
   /* ============================================================
@@ -376,6 +403,7 @@ class ApiClient {
     required bool requiresAuthentication,
     Duration? requestTimeout,
   }) async {
+    final session = _sessionGeneration;
     final uri = _buildUri(
       path,
       queryParameters: queryParameters,
@@ -385,6 +413,12 @@ class ApiClient {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
+    final route = Uri.parse(path).path;
+    final now = DateTime.now();
+    if (method == 'GET' && _serverRefreshPaths.entries.any((entry) =>
+        ApiCachePolicy.matchesRoute(route, entry.key) && now.isBefore(entry.value))) {
+      headers['Cache-Control'] = 'no-cache';
+    }
 
     /* ============================================================
        AUTENTICACIÓN
@@ -400,6 +434,9 @@ class ApiClient {
         );
       }
 
+      if (session != _sessionGeneration) {
+        throw const ApiException(message: 'La sesión cambió. Volvé a intentar.', statusCode: 409);
+      }
       headers['Authorization'] = 'Bearer ${accessToken.trim()}';
     }
 
@@ -473,7 +510,20 @@ class ApiClient {
           );
       }
 
-      return _processResponse(response);
+      if (session != _sessionGeneration) {
+        throw const ApiException(message: 'La sesión cambió. Volvé a intentar.', statusCode: 409);
+      }
+      final result = _processResponse(response);
+      if (method != 'GET' && result['success'] != false) {
+        if (method == 'DELETE' && Uri.parse(path).path == '/auth/account') {
+          clearCache();
+        } else {
+          for (final affected in ApiCachePolicy.invalidationsForWrite(method, path).toSet()) {
+            invalidateCache(affected);
+          }
+        }
+      }
+      return result;
     } on TimeoutException {
       throw const ApiException(
         message:
@@ -524,7 +574,11 @@ class ApiClient {
   ) {
     final authPrefix = requiresAuthentication ? 'AUTH' : 'PUBLIC';
 
-    return '$authPrefix|${uri.toString()}';
+    final keys = uri.queryParametersAll.keys.toList()..sort();
+    final canonical = uri.replace(queryParameters: {
+      for (final key in keys) key: uri.queryParametersAll[key]!,
+    });
+    return '$authPrefix|$canonical';
   }
 
   String _queryLog(Uri uri) {
@@ -628,30 +682,41 @@ class ApiClient {
    * /auth/me?... (si alguna vez existiera)
    */
   void invalidateCache(String path) {
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    final route = Uri.parse(path).path.replaceFirst(RegExp(r'/$'), '');
+    final normalizedPath = route.startsWith('/') ? route : '/$route';
+    final targetPath = _buildUri(normalizedPath).path;
+    bool matchesKey(String key) {
+      final requestPath = Uri.parse(key.substring(key.indexOf('|') + 1)).path;
+      return ApiCachePolicy.matchesRoute(requestPath, targetPath);
+    }
 
-    final baseUrl = '${ApiConfig.baseUrl}$normalizedPath';
-
+    _serverRefreshPaths.removeWhere((_, until) => DateTime.now().isAfter(until));
+    if (_serverRefreshPaths.length >= _maxCacheEntries) _serverRefreshPaths.clear();
+    _serverRefreshPaths[normalizedPath] = DateTime.now().add(const Duration(seconds: 5));
+    // Desvincular respuestas viejas solo de este recurso, incluidas sus páginas.
+    _cacheVersions.removeWhere((key, _) => matchesKey(key));
+    _pendingGetRequests.removeWhere((key, _) => matchesKey(key));
     var removed = 0;
-
-    _getCache.removeWhere(
-      (key, value) {
-        final matches = key.startsWith('AUTH|$baseUrl') ||
-            key.startsWith('PUBLIC|$baseUrl');
-
-        if (matches) {
-          removed += 1;
-        }
-
-        return matches;
-      },
-    );
-
+    _getCache.removeWhere((key, _) {
+      if (!matchesKey(key)) return false;
+      removed++;
+      return true;
+    });
     if (removed > 0) {
-      debugPrint(
-        '🧹 API CACHE INVALIDADO: '
-        '$normalizedPath ($removed)',
-      );
+      debugPrint('🧹 API CACHE INVALIDADO: $normalizedPath ($removed)');
+    }
+  }
+
+  void invalidateCustomerData({bool includeRewards = false}) {
+    for (final path in ApiCachePolicy.customerActivityPaths) {
+      invalidateCache(path);
+    }
+    if (includeRewards) invalidateCache('/rewards');
+  }
+
+  void invalidateForNotification(String action) {
+    for (final path in ApiCachePolicy.invalidationsForNotification(action).toSet()) {
+      invalidateCache(path);
     }
   }
 
@@ -674,6 +739,8 @@ class ApiClient {
 
   void clearCache() {
     _cacheGeneration += 1;
+    _cacheVersions.clear();
+    _serverRefreshPaths.clear();
     _pendingGetRequests.clear();
     final amount = _getCache.length;
 
@@ -706,6 +773,7 @@ class ApiClient {
      * Si cambia el usuario/token,
      * no queremos reutilizar respuestas del usuario anterior.
      */
+    _sessionGeneration += 1;
     clearCache();
 
     await _storage.write(
@@ -764,6 +832,7 @@ class ApiClient {
   }
 
   Future<void> clearSession() async {
+    _sessionGeneration += 1;
     _sessionInvalidated = true;
     /*
      * Importantísimo:
@@ -782,6 +851,7 @@ class ApiClient {
   }
 
   Future<void> clearAllSecureData() async {
+    _sessionGeneration += 1;
     clearCache();
 
     _sessionInvalidated = true;

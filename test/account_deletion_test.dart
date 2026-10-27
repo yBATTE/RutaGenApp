@@ -71,10 +71,11 @@ void main() {
       return response.future;
     }));
     final pending = api.getCached('/auth/me');
+    final rejected = expectLater(pending, throwsA(isA<ApiException>()));
     await started.future;
     await api.clearAllSecureData();
     response.complete(http.Response('{"data":{"user":{"name":"Old"}}}', 200));
-    await pending;
+    await rejected;
     expect(api.cacheEntries, 0);
     expect(await api.hasSession(), false);
   });
