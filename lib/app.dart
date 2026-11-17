@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'core/theme/app_theme.dart';
 import 'data/ruta_gen_repository.dart';
 import 'features/auth/login_page.dart';
+import 'features/onboarding/onboarding_page.dart';
+import 'services/onboarding_service.dart';
 import 'features/shell/app_shell.dart';
 import 'models/user_model.dart';
 import 'services/auth_service.dart';
@@ -33,6 +35,8 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
 
   UserModel? _currentUser;
 
+  final _onboarding = OnboardingService();
+  bool _onboardingCompleted = true;
   bool _checkingSession = true;
   bool _startupSplashVisible = true;
   final Completer<void> _splashFinished = Completer<void>();
@@ -110,6 +114,13 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
   }
 
   Future<void> _authenticateOnStartup() async {
+    try {
+      _onboardingCompleted = await _onboarding.isCompleted();
+    } catch (_) {
+      // Una preferencia local no debe bloquear el acceso a la cuenta.
+      _onboardingCompleted = true;
+    }
+    if (!mounted) return;
     await _authenticateWithBiometrics(
       showErrors: false,
     );
@@ -121,9 +132,8 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
     if (!mounted) return;
     if (_currentUser != null) {
       await _bindPushAfterAuthentication();
-    } else {
-      await PushNotificationService.instance.initialize();
     }
+    // Los permisos push se solicitan al autenticar, no sobre la bienvenida.
   }
 
   /* ============================================================
@@ -164,8 +174,14 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
         return;
       }
 
+      if (user != null) {
+        // Usuarios existentes tampoco vuelven a verla después de cerrar sesión.
+        try { await _onboarding.complete(); } catch (_) {}
+        if (!mounted) return;
+      }
       setState(() {
         _currentUser = user;
+        if (user != null) _onboardingCompleted = true;
         _checkingSession = false;
       });
 
@@ -229,6 +245,12 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
     unawaited(
       _bindPushAfterAuthentication(),
     );
+  }
+
+  Future<void> _completeOnboarding() async {
+    await _onboarding.complete();
+    if (!mounted) return;
+    setState(() => _onboardingCompleted = true);
   }
 
   Future<void> _bindPushAfterAuthentication() async {
@@ -345,7 +367,7 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: _checkingSession || _startupSplashVisible || _currentUser != null
+        value: _checkingSession || _startupSplashVisible || _currentUser != null || !_onboardingCompleted
             ? AppTheme.lightBackgroundOverlay
             : AppTheme.darkBackgroundOverlay,
         child: child ?? const SizedBox.shrink(),
@@ -388,6 +410,11 @@ class _RutaGenAppState extends State<RutaGenApp> with WidgetsBindingObserver {
               user: _currentUser!,
               onLogout: _logout,
               onAccountDeleted: _handleAccountDeleted,
+            )
+          : !_onboardingCompleted
+          ? OnboardingPage(
+              key: const ValueKey('onboarding'),
+              onComplete: _completeOnboarding,
             )
           : LoginPage(
               key: const ValueKey('login'),

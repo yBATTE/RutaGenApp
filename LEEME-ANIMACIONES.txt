@@ -1,0 +1,27 @@
+RUTA GEN - TRANSICIONES SUAVES
+
+Aplicar SOBRE la versión con bienvenida que ya instalaste.
+Copiar lib/ y test/ dentro de la app y aceptar reemplazar los archivos.
+No reemplaza pubspec.yaml, pubspec.lock, firmas ni configuraciones de Android/iOS.
+
+Cambios:
+- PageView con transición horizontal de 650 ms y aceleración/frenado suave.
+- Cada página mantiene su propia ilustración durante la transición.
+- Logo, botón e indicadores quedan fuera del contenido que se desplaza.
+- Movimiento de ilustraciones con velocidad suave en los extremos.
+- Ignora toques repetidos durante la transición.
+- Permisos de notificaciones después de autenticar, no sobre la bienvenida.
+- Corrección de mayúsculas del test de login.
+- Se conserva la preferencia de bienvenida completada.
+
+Comandos:
+flutter analyze
+flutter test test/onboarding_test.dart test/widget_test.dart
+flutter build apk --release
+
+No se pudo ejecutar Flutter en el entorno de edición (SDK no instalado).
+El cambio requiere comprobar las transiciones en un teléfono real.
+
+Para previsualizar sin borrar tu sesión habitual, usá un dispositivo de prueba
+sin bienvenida completada. Una sesión restaurada marca la bienvenida como
+completada: cerrar sesión después no la vuelve a mostrar.
