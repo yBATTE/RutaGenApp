@@ -1,0 +1,64 @@
+RUTA GEN - CACHE BACKEND Y APP - 19/10/2026
+
+INSTALAR BACKEND
+1. Hacé una copia del backend actual.
+2. Copiá el contenido de src de este ZIP sobre src del backend actual (combinar y reemplazar, no borrar).
+3. Podés copiar test para conservar las pruebas; no es necesario para funcionar.
+4. Reiniciá el backend usando tu procedimiento actual con VBS.
+No hace falta instalar dependencias nuevas, cambiar .env ni ejecutar migraciones.
+Este backend conserva el bloqueo de DNI de vendedores de playa que instalaste hoy.
+
+INSTALAR APP
+1. Hacé una copia del proyecto Flutter actual.
+2. Copiá lib del ZIP de Mobile sobre lib de tu proyecto (combinar y reemplazar).
+3. Copiá test para conservar las pruebas.
+4. En la carpeta del proyecto ejecutá:
+   flutter pub get
+   flutter analyze
+   flutter test test/api_cache_test.dart test/account_deletion_test.dart
+   flutter build apk --release
+5. Instalá la nueva APK en los teléfonos de prueba. Android/iOS publicados necesitan una nueva distribución para recibir estos cambios.
+No reemplaces archivos de firma o configuración locales. No se cambió pubspec.yaml ni la versión.
+
+POLÍTICA DE CACHÉ (duraciones por capa)
+Novedades: 2 minutos en app, 60 segundos en backend.
+Catálogo: 15 segundos en app, 10 segundos en backend.
+Listado de sorteos: 30 segundos en app y backend.
+Rankings: 15 segundos en app y backend; el backend autentica primero y separa cada usuario.
+Perfil, puntos, movimientos, regalos, visitas y notificaciones: 10 segundos solo en app.
+QR actual, detalle individual de un regalo y promociones vigentes: sin TTL automático.
+Los canjes y escrituras se validan siempre con datos actuales del servidor.
+El listado de regalos puede tardar hasta 10 segundos en reflejar cambios si no se refresca.
+La caché no es un modo offline: si vence y no hay conexión, se informa el error.
+
+ACTUALIZACIÓN
+- Las consultas simultáneas iguales comparten la petición en vuelo.
+- Una escritura exitosa desde la app limpia su caché local.
+- Las escrituras exitosas a la API invalidan la caché del servidor; cambios de workers o cambios directos en Mongo se ven al vencer el TTL.
+- Refrescar manualmente invalida datos locales y pide omitir la caché del servidor.
+- Volver del segundo plano o recibir/abrir una notificación invalida la caché local y refresca datos del panel.
+- Abrir de nuevo Inicio recarga sus movimientos, novedades y visitas con el TTL correspondiente.
+- Solo se montan las pestañas visitadas; se conservan filtros y estado al actualizar datos.
+- Notificaciones y estado del QR no consultan periódicamente en segundo plano.
+- Se reutiliza cached_network_image en todas las imágenes públicas de premios, novedades y sorteos. La dependencia ya existía.
+
+SESIONES Y MEMORIA
+La caché API de la app vive en memoria y se borra al cambiar/cerrar sesión.
+Las respuestas pendientes de una sesión anterior se rechazan y no pueden repoblar la caché.
+Los objetos devueltos son copias profundas para evitar modificar datos compartidos.
+App: hasta 128 respuestas de hasta 128 KiB cada una (más el overhead de objetos).
+Backend: hasta 300 respuestas, máximo 8 MiB de JSON y 256 KiB por respuesta; hasta 300 claves de consultas en vuelo.
+El servidor mantiene caché por proceso; reiniciarlo la vacía. No se añadió Redis ni otro servicio.
+
+VALIDACIÓN REALIZADA
+- 24 pruebas seleccionadas del backend aprobadas: caché, DNI, verificación y acceso de tienda.
+- Una prueba simula 20 lecturas simultáneas de la misma clave y verifica que solo se ejecuta una consulta. Esto no es una medición de capacidad en tu PC ni prueba contra producción.
+- Suite completa antes del último ajuste de refresco manual: 96 aprobadas y 9 fallidas. Se ejecutó también el ZIP original: 87 aprobadas y los mismos 9 fallos. Corresponden a pruebas antiguas de ajustes y regalo por verificación; no se modificaron esas funciones.
+- Sintaxis JS de los archivos modificados verificada.
+- Sintaxis Dart de lib y test verificada con parser. Este entorno no tiene SDK Flutter/Dart: no se ejecutaron flutter analyze, flutter test ni una compilación APK. Ejecutá los comandos de arriba antes de distribuir.
+- Nuevas pruebas Flutter incluidas: deduplicación de 20 lecturas, copia profunda, TTL, parámetros, refresco con petición pendiente, cambio de sesión, escrituras, errores, límite de memoria y rutas críticas sin TTL.
+
+VER LOGS CON ARRANQUE VBS (PowerShell)
+Get-Content "C:\Users\lucki\Desktop\Ruta Gen\logs\api-ruta-gen.log" -Tail 30 -Wait
+Ctrl+C deja de mirar los logs; no detiene el backend.
+La caché reduce consultas, pero la capacidad real requiere medir CPU, RAM y tiempos de respuesta en tu PC con tráfico representativo.

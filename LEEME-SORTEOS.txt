@@ -1,0 +1,43 @@
+﻿RUTA GEN - CORRECCION DE SORTEOS - 19/10/2026
+
+PANEL
+En Sorteos > Sorteos actuales y próximos, seleccioná la tarjeta del sorteo.
+Se corrigió el backend que impedía cargar su ranking y detalle con el error
+"the limit must be positive". No requiere modificar el frontend del panel.
+
+BACKEND
+1. Hacé una copia de seguridad de tu backend actual.
+2. De RutaGen-Backend-Cache.zip copiá y reemplazá SOLO:
+   src/modules/draws/raffle-events.service.js
+   src/modules/draws/raffle-programs.service.js
+3. Reiniciá el backend con tu procedimiento actual (VBS).
+4. Recargá el panel y abrí la tarjeta Sorteo De Prueba.
+No requiere npm install, cambios de .env, migraciones ni borrar registros.
+El test opcional está en test/draw-ranking.test.js.
+
+APP FLUTTER
+1. Hacé una copia de tu proyecto actual.
+2. De RutaGen-Mobile-Cache.zip copiá y reemplazá SOLO:
+   lib/features/draws/draws_page.dart
+3. En la carpeta del proyecto ejecutá:
+   flutter analyze
+   flutter build apk --release
+4. Instalá la APK nueva. Para iPhone necesitás compilar y distribuir una
+   nueva versión iOS; reiniciar el backend no modifica la app instalada.
+Se quitó el enlace a la pantalla de bicicleta/moto. La pantalla de Sorteos
+conserva los actuales, próximos y anteriores creados desde el panel.
+Los anteriores corresponden a eventos que ya tienen resultado registrado.
+El código antiguo queda sin acceso desde esta pantalla para minimizar cambios.
+
+ALCANCE
+Se mantienen las correcciones de caché de las últimas copias recibidas.
+Si hiciste otros cambios locales posteriores en estos tres archivos,
+comparalos antes de reemplazarlos. Los demás archivos no necesitan copiarse.
+
+VERIFICACION
+13 pruebas de backend aprobadas (6 de ranking y resultados + 7 de caché).
+Las pruebas de ranking usan base de datos simulada, no MongoDB de producción.
+Se verificó que el código original reproduce el error y el corregido lo evita.
+Sintaxis JS de ambos servicios verificada.
+No se ejecutaron flutter analyze, flutter test ni compilaciones Android/iOS:
+este entorno no tiene Flutter/Dart. Ejecutá la validación en tu PC.

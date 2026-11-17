@@ -1,7 +1,7 @@
 name: ruta_gen_app
 description: Base Flutter de la app de fidelizaciÃ³n Ruta Gen.
 publish_to: "none"
-version: 1.0.3+6
+version: 1.0.4+6
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
